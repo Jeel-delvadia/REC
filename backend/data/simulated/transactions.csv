@@ -1,0 +1,97 @@
+rec_id,from_party,to_party,timestamp,kind
+REC-00400,Registry,Suryodaya Energy,2026-04-18T10:00:00,issue
+REC-00400,Suryodaya Energy,Evergreen Corp Sustainability,2026-05-02T12:57:11.896082,transfer
+REC-00401,Registry,Marwar Renewables,2026-04-18T10:00:00,issue
+REC-00401,Marwar Renewables,Greenleaf Offsets,2026-05-06T12:03:37.971278,transfer
+REC-00402,Registry,Deccan Power Co,2026-04-18T10:00:00,issue
+REC-00403,Registry,Karnataka Green Grid,2026-04-18T10:00:00,issue
+REC-00404,Registry,Vindhya Solar,2026-04-18T10:00:00,issue
+REC-00404,Vindhya Solar,Evergreen Corp Sustainability,2026-04-23T20:20:16.982515,transfer
+REC-00405,Registry,Helios Trading Energy,2026-04-18T10:00:00,issue
+REC-00405,Helios Trading Energy,Blue Delta Commodities,2026-04-23T15:24:00.458367,transfer
+REC-00406,Registry,Thar Photovoltaic,2026-04-18T10:00:00,issue
+REC-00407,Registry,Coromandel Clean Energy,2026-04-18T10:00:00,issue
+REC-00407,Coromandel Clean Energy,Greenleaf Offsets,2026-04-28T05:34:24.159066,transfer
+REC-00408,Registry,Suryodaya Energy,2026-05-03T10:00:00,issue
+REC-00409,Registry,Marwar Renewables,2026-05-03T10:00:00,issue
+REC-00410,Registry,Deccan Power Co,2026-05-03T10:00:00,issue
+REC-00410,Deccan Power Co,Kestrel Metals Ltd,2026-05-19T19:02:35.762393,transfer
+REC-00411,Registry,Karnataka Green Grid,2026-05-03T10:00:00,issue
+REC-00411,Karnataka Green Grid,Nimbus Carbon Traders,2026-05-19T04:44:19.583189,transfer
+REC-00412,Registry,Vindhya Solar,2026-05-03T10:00:00,issue
+REC-00413,Registry,Helios Trading Energy,2026-05-03T10:00:00,issue
+REC-00413,Helios Trading Energy,Blue Delta Commodities,2026-05-10T07:24:27.818876,transfer
+REC-00414,Registry,Thar Photovoltaic,2026-05-03T10:00:00,issue
+REC-00414,Thar Photovoltaic,Blue Delta Commodities,2026-05-13T18:07:24.237146,transfer
+REC-00414,Blue Delta Commodities,Kestrel Metals Ltd,2026-05-30T09:07:20.098875,transfer
+REC-00415,Registry,Coromandel Clean Energy,2026-05-03T10:00:00,issue
+REC-00415,Coromandel Clean Energy,Blue Delta Commodities,2026-05-11T01:30:05.891275,transfer
+REC-00416,Registry,Suryodaya Energy,2026-05-18T10:00:00,issue
+REC-00416,Suryodaya Energy,Blue Delta Commodities,2026-06-05T20:53:59.410379,transfer
+REC-00417,Registry,Marwar Renewables,2026-05-18T10:00:00,issue
+REC-00418,Registry,Deccan Power Co,2026-05-18T10:00:00,issue
+REC-00418,Deccan Power Co,Greenleaf Offsets,2026-06-07T09:58:41.611498,transfer
+REC-00418,Greenleaf Offsets,Kestrel Metals Ltd,2026-06-17T16:44:20.735866,transfer
+REC-00419,Registry,Karnataka Green Grid,2026-05-18T10:00:00,issue
+REC-00420,Registry,Vindhya Solar,2026-05-18T10:00:00,issue
+REC-00420,Vindhya Solar,Blue Delta Commodities,2026-05-25T03:29:00.295785,transfer
+REC-00422,Registry,Helios Trading Energy,2026-05-18T10:00:00,issue
+REC-00422,Helios Trading Energy,Nimbus Carbon Traders,2026-05-29T11:40:42.471414,transfer
+REC-00423,Registry,Thar Photovoltaic,2026-05-18T10:00:00,issue
+REC-00423,Thar Photovoltaic,Evergreen Corp Sustainability,2026-05-26T09:18:41.646823,transfer
+REC-00424,Registry,Coromandel Clean Energy,2026-05-18T10:00:00,issue
+REC-00424,Coromandel Clean Energy,Blue Delta Commodities,2026-05-18T14:05:35.966867,transfer
+REC-00424,Blue Delta Commodities,Nimbus Carbon Traders,2026-05-18T20:57:35.043845,transfer
+REC-00425,Registry,Suryodaya Energy,2026-06-02T10:00:00,issue
+REC-00425,Suryodaya Energy,Kestrel Metals Ltd,2026-06-20T00:12:27.124653,transfer
+REC-00426,Registry,Marwar Renewables,2026-06-02T10:00:00,issue
+REC-00426,Marwar Renewables,Kestrel Metals Ltd,2026-06-11T05:41:42.986095,transfer
+REC-00426,Kestrel Metals Ltd,Evergreen Corp Sustainability,2026-06-26T06:56:36.280743,transfer
+REC-00427,Registry,Deccan Power Co,2026-06-02T10:00:00,issue
+REC-00427,Deccan Power Co,Nimbus Carbon Traders,2026-06-09T02:16:26.268112,transfer
+REC-00428,Registry,Karnataka Green Grid,2026-06-02T10:00:00,issue
+REC-00428,Karnataka Green Grid,Nimbus Carbon Traders,2026-06-20T13:02:25.571731,transfer
+REC-00429,Registry,Vindhya Solar,2026-06-02T10:00:00,issue
+REC-00430,Registry,Helios Trading Energy,2026-06-02T10:00:00,issue
+REC-00430,Helios Trading Energy,Nimbus Carbon Traders,2026-06-07T23:22:01.518505,transfer
+REC-00431,Registry,Thar Photovoltaic,2026-06-02T10:00:00,issue
+REC-00431,Thar Photovoltaic,Greenleaf Offsets,2026-06-19T01:45:48.284086,transfer
+REC-00432,Registry,Coromandel Clean Energy,2026-06-02T10:00:00,issue
+REC-00432,Coromandel Clean Energy,Nimbus Carbon Traders,2026-06-13T16:12:18.258990,transfer
+REC-00433,Registry,Suryodaya Energy,2026-06-17T10:00:00,issue
+REC-00433,Suryodaya Energy,Kestrel Metals Ltd,2026-07-04T20:20:49.843298,transfer
+REC-00433,Kestrel Metals Ltd,Blue Delta Commodities,2026-07-17T18:11:02.538025,transfer
+REC-00434,Registry,Marwar Renewables,2026-06-17T10:00:00,issue
+REC-00434,Marwar Renewables,Evergreen Corp Sustainability,2026-06-29T01:19:14.054302,transfer
+REC-00435,Registry,Deccan Power Co,2026-06-17T10:00:00,issue
+REC-00435,Deccan Power Co,Kestrel Metals Ltd,2026-07-03T11:53:59.483209,transfer
+REC-00436,Registry,Karnataka Green Grid,2026-06-17T10:00:00,issue
+REC-00436,Karnataka Green Grid,Kestrel Metals Ltd,2026-06-23T05:32:53.582578,transfer
+REC-00436,Kestrel Metals Ltd,Greenleaf Offsets,2026-07-04T15:45:15.693226,transfer
+REC-00437,Registry,Vindhya Solar,2026-06-17T10:00:00,issue
+REC-00437,Vindhya Solar,Evergreen Corp Sustainability,2026-07-03T20:17:31.321761,transfer
+REC-00438,Registry,Helios Trading Energy,2026-06-17T10:00:00,issue
+REC-00439,Registry,Thar Photovoltaic,2026-06-17T10:00:00,issue
+REC-00439,Thar Photovoltaic,Greenleaf Offsets,2026-06-30T14:42:18.914974,transfer
+REC-00440,Registry,Coromandel Clean Energy,2026-06-17T10:00:00,issue
+REC-00440,Coromandel Clean Energy,Kestrel Metals Ltd,2026-06-26T07:41:58.795589,transfer
+REC-00441,Registry,Suryodaya Energy,2026-07-02T10:00:00,issue
+REC-00442,Registry,Marwar Renewables,2026-07-02T10:00:00,issue
+REC-00442,Marwar Renewables,Blue Delta Commodities,2026-07-12T15:00:08.812349,transfer
+REC-00443,Registry,Deccan Power Co,2026-07-02T10:00:00,issue
+REC-00444,Registry,Karnataka Green Grid,2026-07-02T10:00:00,issue
+REC-00444,Karnataka Green Grid,Blue Delta Commodities,2026-07-09T11:23:18.781045,transfer
+REC-00445,Registry,Vindhya Solar,2026-07-02T10:00:00,issue
+REC-00445,Vindhya Solar,Evergreen Corp Sustainability,2026-07-10T23:38:02.935757,transfer
+REC-00445,Evergreen Corp Sustainability,Greenleaf Offsets,2026-07-16T01:45:03.196323,transfer
+REC-00446,Registry,Helios Trading Energy,2026-07-02T10:00:00,issue
+REC-00446,Helios Trading Energy,Greenleaf Offsets,2026-07-21T10:54:13.188624,transfer
+REC-00446,Greenleaf Offsets,Evergreen Corp Sustainability,2026-08-05T22:12:05.856038,transfer
+REC-00447,Registry,Thar Photovoltaic,2026-07-02T10:00:00,issue
+REC-00447,Thar Photovoltaic,Greenleaf Offsets,2026-07-16T05:31:09.622925,transfer
+REC-00448,Registry,Coromandel Clean Energy,2026-07-02T10:00:00,issue
+REC-00448,Coromandel Clean Energy,Blue Delta Commodities,2026-07-16T20:35:04.570776,transfer
+REC-00421,Registry,Helios Trading Energy,2026-06-08T16:30:00,issue
+REC-00421,Helios Trading Energy,Nimbus Carbon Traders,2026-06-08T18:30:00,transfer
+REC-00421,Nimbus Carbon Traders,Greenleaf Offsets,2026-06-08T21:30:00,transfer
+REC-00421,Greenleaf Offsets,Helios Trading Energy,2026-06-09T02:30:00,transfer

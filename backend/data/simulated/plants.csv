@@ -1,0 +1,9 @@
+id,name,owner,latitude,longitude,capacity_kw,technology,commissioned_on
+PLT-001,Bhuj Solar Park,Suryodaya Energy,23.25,69.67,5000,solar,2021-01-15
+PLT-002,Jodhpur Sun Farm,Marwar Renewables,26.24,73.02,3000,solar,2021-01-15
+PLT-003,Anantapur Solar,Deccan Power Co,14.68,77.6,4000,solar,2021-01-15
+PLT-004,Pavagada Array 7,Karnataka Green Grid,14.1,77.28,2500,solar,2021-01-15
+PLT-005,Rewa Rooftop Cluster,Vindhya Solar,24.53,81.3,800,solar,2021-01-15
+PLT-006,Charanka Block B,Helios Trading Energy,23.9,71.2,2000,solar,2021-01-15
+PLT-007,Bhadla Phase 3,Thar Photovoltaic,27.53,71.91,6000,solar,2021-01-15
+PLT-008,Kamuthi Solar,Coromandel Clean Energy,9.35,78.37,3500,solar,2021-01-15
