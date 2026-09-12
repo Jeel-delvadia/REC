@@ -92,14 +92,14 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
 
   const getRiskBandBadge = (band, score) => {
     switch (band) {
-      case 'low':
-        return <span className="px-3 py-1 rounded-full text-xs font-semibold badge-low flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5" /> Low Risk ({score})</span>;
-      case 'medium':
-        return <span className="px-3 py-1 rounded-full text-xs font-semibold badge-medium flex items-center gap-1.5"><AlertCircle className="w-3.5 h-3.5" /> Medium Risk ({score})</span>;
-      case 'high':
-        return <span className="px-3 py-1 rounded-full text-xs font-semibold badge-high flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" /> High Risk ({score})</span>;
-      case 'critical':
-        return <span className="px-3 py-1 rounded-full text-xs font-semibold badge-critical flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" /> Critical Risk ({score})</span>;
+      case 'genuine':
+        return <span className="px-3 py-1 rounded-full text-xs font-semibold badge-genuine flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5" /> Genuine ({score})</span>;
+      case 'suspicious':
+        return <span className="px-3 py-1 rounded-full text-xs font-semibold badge-suspicious flex items-center gap-1.5"><AlertCircle className="w-3.5 h-3.5" /> Suspicious ({score})</span>;
+      case 'high_risk':
+        return <span className="px-3 py-1 rounded-full text-xs font-semibold badge-high_risk flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" /> High Risk ({score})</span>;
+      case 'likely_fraud':
+        return <span className="px-3 py-1 rounded-full text-xs font-semibold badge-likely_fraud flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" /> Likely Fraud ({score})</span>;
       default:
         return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-300">Unverified</span>;
     }

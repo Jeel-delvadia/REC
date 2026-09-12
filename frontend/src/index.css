@@ -48,26 +48,26 @@ code, pre, .font-mono {
   opacity: 0.8;
 }
 
-/* Risk Badges */
-.badge-low {
+/* Risk Badges - report §6 band names: genuine / suspicious / high_risk / likely_fraud */
+.badge-genuine {
   background-color: rgba(16, 185, 129, 0.15);
   color: #34d399;
   border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
-.badge-medium {
+.badge-suspicious {
   background-color: rgba(245, 158, 11, 0.15);
   color: #fbbf24;
   border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
-.badge-high {
+.badge-high_risk {
   background-color: rgba(244, 63, 94, 0.15);
   color: #fb7185;
   border: 1px solid rgba(244, 63, 94, 0.3);
 }
 
-.badge-critical {
+.badge-likely_fraud {
   background-color: rgba(168, 85, 247, 0.2);
   color: #c084fc;
   border: 1px solid rgba(168, 85, 247, 0.4);

@@ -76,10 +76,10 @@ export default function RecExplorerPage() {
 
   const getBadgeClass = (b) => {
     switch (b) {
-      case 'low': return 'badge-low';
-      case 'medium': return 'badge-medium';
-      case 'high': return 'badge-high';
-      case 'critical': return 'badge-critical';
+      case 'genuine': return 'badge-genuine';
+      case 'suspicious': return 'badge-suspicious';
+      case 'high_risk': return 'badge-high_risk';
+      case 'likely_fraud': return 'badge-likely_fraud';
       default: return 'bg-slate-800 text-slate-300';
     }
   };
@@ -136,10 +136,10 @@ export default function RecExplorerPage() {
             className="w-full bg-slate-900 border border-slate-800 focus:border-sky-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none capitalize"
           >
             <option value="">All Risk Bands</option>
-            <option value="low">Low Risk (0-39)</option>
-            <option value="medium">Medium Risk (40-59)</option>
-            <option value="high">High Risk (60-79)</option>
-            <option value="critical">Critical Risk (80-100)</option>
+            <option value="genuine">Genuine (0-30)</option>
+            <option value="suspicious">Suspicious (31-60)</option>
+            <option value="high_risk">High Risk (61-80)</option>
+            <option value="likely_fraud">Likely Fraud (81-100)</option>
           </select>
         </div>
 

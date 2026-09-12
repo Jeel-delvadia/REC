@@ -145,7 +145,7 @@ export default function ProvenanceGraphPage() {
         ctx.lineWidth = 2;
       } else if (node.type === 'rec') {
         ctx.fillStyle = 'rgba(245, 158, 11, 0.2)';
-        ctx.strokeStyle = node.risk_band === 'high' || node.risk_band === 'critical' ? '#f43f5e' : '#fbbf24';
+        ctx.strokeStyle = node.risk_band === 'high_risk' || node.risk_band === 'likely_fraud' ? '#f43f5e' : '#fbbf24';
         ctx.lineWidth = 2;
       } else {
         ctx.fillStyle = 'rgba(168, 85, 247, 0.2)';

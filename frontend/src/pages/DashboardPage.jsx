@@ -11,7 +11,7 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [ledgerValid, setLedgerValid] = useState(true);
-  const [riskDistribution, setRiskDistribution] = useState({ low: 0, medium: 0, high: 0, critical: 0 });
+  const [riskDistribution, setRiskDistribution] = useState({ genuine: 0, suspicious: 0, high_risk: 0, likely_fraud: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedRecId, setSelectedRecId] = useState(null);
@@ -37,7 +37,7 @@ export default function DashboardPage() {
       setLedgerValid(ledgerData.valid);
 
       // Compute exact Risk Distribution from fetched RECs
-      const counts = { low: 0, medium: 0, high: 0, critical: 0 };
+      const counts = { genuine: 0, suspicious: 0, high_risk: 0, likely_fraud: 0 };
       if (recsPage && recsPage.items) {
         recsPage.items.forEach(r => {
           if (r.risk_band && counts[r.risk_band] !== undefined) {
@@ -56,10 +56,10 @@ export default function DashboardPage() {
 
   const getBadgeClass = (band) => {
     switch (band) {
-      case 'low': return 'badge-low';
-      case 'medium': return 'badge-medium';
-      case 'high': return 'badge-high';
-      case 'critical': return 'badge-critical';
+      case 'genuine': return 'badge-genuine';
+      case 'suspicious': return 'badge-suspicious';
+      case 'high_risk': return 'badge-high_risk';
+      case 'likely_fraud': return 'badge-likely_fraud';
       default: return 'bg-slate-800 text-slate-300';
     }
   };
@@ -90,7 +90,7 @@ export default function DashboardPage() {
   const highRiskList = summary?.high_risk || [];
 
   const dist = riskDistribution;
-  const totalDist = (dist.low + dist.medium + dist.high + dist.critical) || 1;
+  const totalDist = (dist.genuine + dist.suspicious + dist.high_risk + dist.likely_fraud) || 1;
 
   return (
     <div className="max-w-7xl mx-auto px-4 lg:px-8 py-8 space-y-8">
@@ -203,29 +203,29 @@ export default function DashboardPage() {
 
         {/* Segmented Bar */}
         <div className="w-full h-4 bg-slate-900 rounded-full overflow-hidden flex p-0.5 border border-slate-800">
-          <div style={{ width: `${(dist.low / totalDist) * 100}%` }} className="bg-emerald-500 h-full rounded-l-full transition-all" title={`Low Risk: ${dist.low}`} />
-          <div style={{ width: `${(dist.medium / totalDist) * 100}%` }} className="bg-amber-500 h-full transition-all" title={`Medium Risk: ${dist.medium}`} />
-          <div style={{ width: `${(dist.high / totalDist) * 100}%` }} className="bg-rose-500 h-full transition-all" title={`High Risk: ${dist.high}`} />
-          <div style={{ width: `${(dist.critical / totalDist) * 100}%` }} className="bg-purple-500 h-full rounded-r-full transition-all" title={`Critical Risk: ${dist.critical}`} />
+          <div style={{ width: `${(dist.genuine / totalDist) * 100}%` }} className="bg-emerald-500 h-full rounded-l-full transition-all" title={`Genuine: ${dist.genuine}`} />
+          <div style={{ width: `${(dist.suspicious / totalDist) * 100}%` }} className="bg-amber-500 h-full transition-all" title={`Suspicious: ${dist.suspicious}`} />
+          <div style={{ width: `${(dist.high_risk / totalDist) * 100}%` }} className="bg-rose-500 h-full transition-all" title={`High Risk: ${dist.high_risk}`} />
+          <div style={{ width: `${(dist.likely_fraud / totalDist) * 100}%` }} className="bg-purple-500 h-full rounded-r-full transition-all" title={`Likely Fraud: ${dist.likely_fraud}`} />
         </div>
 
         {/* Legend */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-emerald-500" />
-            <span className="text-xs text-slate-300 font-medium">Low Risk ({dist.low})</span>
+            <span className="text-xs text-slate-300 font-medium">Genuine ({dist.genuine})</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-amber-500" />
-            <span className="text-xs text-slate-300 font-medium">Medium Risk ({dist.medium})</span>
+            <span className="text-xs text-slate-300 font-medium">Suspicious ({dist.suspicious})</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-rose-500" />
-            <span className="text-xs text-slate-300 font-medium">High Risk ({dist.high})</span>
+            <span className="text-xs text-slate-300 font-medium">High Risk ({dist.high_risk})</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-purple-500" />
-            <span className="text-xs text-slate-300 font-medium">Critical Risk ({dist.critical})</span>
+            <span className="text-xs text-slate-300 font-medium">Likely Fraud ({dist.likely_fraud})</span>
           </div>
         </div>
       </div>
@@ -304,7 +304,7 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-xs font-bold text-sky-400">{alt.rec_id}</span>
                     <span className={`text-[10px] uppercase px-2 py-0.5 rounded font-semibold ${
-                      alt.severity === 'high' ? 'bg-rose-500/20 text-rose-300' : 'bg-amber-500/20 text-amber-300'
+                      alt.severity === 'likely_fraud' || alt.severity === 'ledger_integrity' ? 'bg-rose-500/20 text-rose-300' : 'bg-amber-500/20 text-amber-300'
                     }`}>
                       {alt.severity}
                     </span>
