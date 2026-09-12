@@ -95,3 +95,5 @@ REC-00421,Registry,Helios Trading Energy,2026-06-08T16:30:00,issue
 REC-00421,Helios Trading Energy,Nimbus Carbon Traders,2026-06-08T18:30:00,transfer
 REC-00421,Nimbus Carbon Traders,Greenleaf Offsets,2026-06-08T21:30:00,transfer
 REC-00421,Greenleaf Offsets,Helios Trading Energy,2026-06-09T02:30:00,transfer
+REC-001,Registry,Buyer X,2026-04-01T15:00:00,issue
+REC-002,Registry,Buyer Y,2026-04-03T09:00:00,issue
