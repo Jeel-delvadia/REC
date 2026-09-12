@@ -20,6 +20,42 @@ def compute_hash(prev_hash: str, event_type: str, rec_id: str | None, payload: d
     return hashlib.sha256(body.encode()).hexdigest()
 
 
+def check_rec_integrity(rec_snapshot: dict, rec_entries: list[dict]) -> dict:
+    """Does a REC's current row match what its own ledger entries recorded?
+
+    `rec_snapshot`: {"energy_mwh", "holder"} read from the database right now.
+    `rec_entries`: this REC's ledger entries, in chain order, each with "event_type" and "payload".
+    Catches exactly the report's demo scenario (Sec15 step 5): editing a REC's quantity or
+    holder directly in the database, bypassing the ledger, leaves the ledger's own hash chain
+    internally consistent but out of step with the row it describes.
+    """
+    issued = next((e for e in rec_entries if e["event_type"] == "ISSUED"), None)
+    if issued is None:
+        # Nothing to compare against (older data, or the ledger predates this check) - not a finding.
+        return {"consistent": True, "reason": None, "expected_energy_mwh": None, "expected_holder": None}
+
+    expected_energy = issued["payload"].get("energy_mwh")
+    transfers = [e for e in rec_entries if e["event_type"] == "TRANSFERRED"]
+    expected_holder = transfers[-1]["payload"]["to"] if transfers else issued["payload"].get("holder")
+
+    energy_ok = expected_energy is None or abs(rec_snapshot["energy_mwh"] - expected_energy) < 1e-6
+    holder_ok = expected_holder is None or rec_snapshot["holder"] == expected_holder
+    if energy_ok and holder_ok:
+        return {"consistent": True, "reason": None, "expected_energy_mwh": expected_energy, "expected_holder": expected_holder}
+
+    problems = []
+    if not energy_ok:
+        problems.append(f"row shows {rec_snapshot['energy_mwh']} MWh but the ledger's ISSUED entry recorded {expected_energy} MWh")
+    if not holder_ok:
+        problems.append(f"row shows holder '{rec_snapshot['holder']}' but the ledger's last transfer recorded '{expected_holder}'")
+    return {
+        "consistent": False,
+        "reason": "; ".join(problems),
+        "expected_energy_mwh": expected_energy,
+        "expected_holder": expected_holder,
+    }
+
+
 def verify_chain(entries: Iterable[dict]) -> dict:
     """`entries` in chain order, each {"id", "event_type", "rec_id", "payload", "created_at", "prev_hash", "hash"}."""
     prev, checked = GENESIS_HASH, 0

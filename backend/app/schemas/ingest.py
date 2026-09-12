@@ -12,3 +12,4 @@ class IngestResult(BaseModel):
     recs: int
     transactions: int
     verified: int
+    errors: list[str] = []

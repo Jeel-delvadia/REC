@@ -1,16 +1,21 @@
-"""Auditor actions and the hash-chained ledger that records every event."""
+"""Auditor actions and the hash-chained ledger that records every event.
+
+Ledger event types are the report's four (§8): ISSUED, TRANSFERRED, VERIFIED and
+AUDITOR_ACTION - every auditor action writes AUDITOR_ACTION, with the specific action
+name inside the payload, not as its own event type.
+"""
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.database import utcnow
 from app.engines import ledger
-from app.models import AuditAction, LedgerEntry
+from app.models import AuditAction, LedgerEntry, VerificationResult
 from app.services import alert_service
 from app.services.rec_service import get_rec
 
-# Ledger event type and new REC status for each auditor action. A note leaves the status alone.
-ACTION_EVENTS = {"approve": "approved", "reject": "rejected", "report": "reported", "note": "note"}
-ACTION_STATUS = {"approve": "approved", "reject": "rejected", "report": "reported"}
+# New REC status for each action that changes status. request_verification and note leave
+# a REC's ledger event type as AUDITOR_ACTION either way - see record_action.
+ACTION_STATUS = {"approve": "approved", "reject": "rejected", "report": "reported", "request_verification": "pending"}
 
 
 def append_ledger(db: Session, event_type: str, rec_id: str | None, payload: dict) -> LedgerEntry:
@@ -38,7 +43,23 @@ def record_action(db: Session, rec_id: str, action: str, auditor: str, note: str
     if action in ACTION_STATUS:
         rec.status = ACTION_STATUS[action]
         alert_service.acknowledge_for_rec(db, rec.id)  # a decision closes the REC's open alerts
-    entry = append_ledger(db, ACTION_EVENTS[action], rec.id, {"auditor": auditor, "note": note, "status": rec.status})
+
+    payload = {"action": action, "auditor": auditor, "note": note, "status": rec.status}
+    if action == "report":
+        # Escalation record (report §9): attach a snapshot of the latest checks and explanation,
+        # so the evidence behind a fraud report survives even if the REC is re-verified later.
+        latest = db.scalars(
+            select(VerificationResult).where(VerificationResult.rec_id == rec.id).order_by(VerificationResult.id.desc())
+        ).first()
+        if latest:
+            payload["evidence"] = {
+                "risk_score": latest.risk_score,
+                "risk_band": latest.risk_band,
+                "checks": [{"name": c["name"], "status": c["status"], "summary": c["summary"]} for c in latest.checks],
+                "explanation": latest.explanation,
+            }
+
+    entry = append_ledger(db, "AUDITOR_ACTION", rec.id, payload)
     db.commit()
     db.refresh(audit)
     return {"action": audit, "rec_status": rec.status, "ledger_hash": entry.hash}

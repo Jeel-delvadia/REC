@@ -1,24 +1,29 @@
 """Risk scoring. Every threshold lives here: engines measure, this module judges.
 
-The API returns score and band together, and the frontend only maps band -> colour,
-so the dashboard and the backend can never disagree about what counts as high risk.
+Weights, bands and thresholds follow the hackathon report (§6). The API returns score
+and band together, and the frontend only maps band -> colour, so the dashboard and the
+backend can never disagree about what counts as high risk.
+
+Ledger integrity is deliberately not one of the weighted checks below - a broken hash
+chain overrides the band to likely_fraud regardless of score. See RS-07 in
+verification_service.py.
 """
 
-# Score -> band, checked top-down.
-BANDS = ((80, "critical"), (60, "high"), (40, "medium"), (0, "low"))
-HIGH_RISK_BANDS = ("high", "critical")
+# Score -> band, checked top-down. Report §6.
+BANDS = ((81, "likely_fraud"), (61, "high_risk"), (31, "suspicious"), (0, "genuine"))
+GENUINE_BAND = "genuine"
+SUSPICIOUS_BANDS = ("suspicious", "high_risk")
+FRAUD_BAND = "likely_fraud"
+# Kept for the dashboard's existing "at risk" count; alerts key off FRAUD_BAND alone (RS-09).
+HIGH_RISK_BANDS = SUSPICIOUS_BANDS + (FRAUD_BAND,)
 
-# How many of the 100 points each check can contribute.
-WEIGHTS = {"physics": 30, "meter_match": 25, "duplicate": 25, "anomaly": 10, "provenance": 10}
+# How many of the 100 points each check can contribute. Report §6 Fraud Risk Score table.
+WEIGHTS = {"physics": 30, "meter_match": 25, "duplicate": 25, "anomaly": 15, "provenance": 5}
 
-# A near-certain failure on any of these is enough on its own to make a REC high risk.
-HARD_FAIL_CHECKS = ("physics", "meter_match", "duplicate")
-HARD_FAIL_RISK = 0.9
-HARD_FAIL_FLOOR = 65
-
-# Per-check status shown next to each check.
-FAIL_AT = 0.6
-WARN_AT = 0.2
+# Per-check status shown next to each check (report §6: below 40 pass, 40-79 warn, 80+ fail),
+# expressed here on the 0-1 risk scale used internally (risk * 100 = the report's sub-score).
+FAIL_AT = 0.8
+WARN_AT = 0.4
 
 
 def _ramp(value: float, start: float, full: float) -> float:
@@ -68,15 +73,63 @@ _RISK_FUNCTIONS = {
 }
 
 
+def _physics_reason(m: dict) -> str:
+    if m["days"] == 0:
+        return "PHYSICS_NO_DATA"
+    if m["days_over_capacity"]:
+        return "PHYSICS_EXCEEDS_CAPACITY"
+    if m["ratio"] > 1.10:
+        return "PHYSICS_CLAIM_ABOVE_ESTIMATE"
+    return "PHYSICS_WITHIN_TOLERANCE"
+
+
+def _meter_match_reason(m: dict) -> str:
+    if m["metered_kwh"] <= 0:
+        return "METER_NO_DATA"
+    if m["claim_ratio"] > 1.01:
+        return "METER_CLAIM_ABOVE_METERED"
+    return "METER_CONSISTENT"
+
+
+def _duplicate_reason(m: dict) -> str:
+    return "DUPLICATE_OVERLAPPING_CLAIM" if m["overlapping_recs"] else "DUPLICATE_NONE_FOUND"
+
+
+def _anomaly_reason(m: dict) -> str:
+    if not m["available"]:
+        return "ANOMALY_MODEL_UNAVAILABLE"
+    return "ANOMALY_UNUSUAL_PATTERN" if m["fraction"] > 0.05 else "ANOMALY_NORMAL_PATTERN"
+
+
+def _provenance_reason(m: dict) -> str:
+    if m["cycle"]:
+        return "PROVENANCE_CIRCULAR_TRANSFER"
+    if m["rapid_resales"]:
+        return "PROVENANCE_RAPID_RESALE"
+    return "PROVENANCE_CLEAN"
+
+
+_REASON_FUNCTIONS = {
+    "physics": _physics_reason,
+    "meter_match": _meter_match_reason,
+    "duplicate": _duplicate_reason,
+    "anomaly": _anomaly_reason,
+    "provenance": _provenance_reason,
+}
+
+
 def check_risks(measurements: dict[str, dict]) -> dict[str, float]:
     """Engine measurements -> 0-1 risk per check."""
     return {name: _RISK_FUNCTIONS[name](m) for name, m in measurements.items()}
 
 
+def check_reason(name: str, m: dict) -> str:
+    """A short reason code carrying the same numbers as the check's summary text (report §9)."""
+    return _REASON_FUNCTIONS[name](m)
+
+
 def score(risks: dict[str, float]) -> int:
     total = sum(WEIGHTS[name] * risk for name, risk in risks.items())
-    if any(risks.get(name, 0.0) >= HARD_FAIL_RISK for name in HARD_FAIL_CHECKS):
-        total = max(total, HARD_FAIL_FLOOR)
     return round(min(total, 100))
 
 
@@ -84,7 +137,7 @@ def band_for(score: int) -> str:
     for floor, band in BANDS:
         if score >= floor:
             return band
-    return "low"
+    return GENUINE_BAND
 
 
 def status_for(risk: float) -> str:
