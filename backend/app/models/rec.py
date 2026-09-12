@@ -35,8 +35,10 @@ class Rec(Base):
     interval_start: Mapped[datetime | None]
     interval_end: Mapped[datetime | None]
     issuer: Mapped[str | None] = mapped_column(String(120))
-    # RS-05: SHA-256(plant_id|meter_id|interval_start|interval_end|energy_mwh). Unique when set,
-    # so a second REC claiming the identical generation event fails at the database level too.
-    fingerprint: Mapped[str | None] = mapped_column(String(64), unique=True)
+    # RS-05: SHA-256(plant_id|meter_id|interval_start|interval_end|energy_mwh). Deliberately NOT
+    # unique: the report's own worked example (§7) has REC-002 registered with the same
+    # fingerprint as REC-001, then flagged DOUBLE COUNTING DETECTED by verification - the auditor
+    # investigates and decides, rather than the insert failing outright.
+    fingerprint: Mapped[str | None] = mapped_column(String(64), index=True)
 
     plant: Mapped[Plant] = relationship(lazy="joined")

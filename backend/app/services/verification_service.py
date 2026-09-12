@@ -54,8 +54,14 @@ def verify_rec(db: Session, rec_id: str, *, use_llm: bool = True) -> Verificatio
     transfers = db.scalars(
         select(Transaction).where(Transaction.rec_id == rec.id).order_by(Transaction.timestamp)
     ).all()
+    # RS-05: an exact SHA-256 match - the same generation event, re-certified under a new ID.
+    fingerprint_matches = (
+        list(db.scalars(select(Rec.id).where(Rec.fingerprint == rec.fingerprint, Rec.id != rec.id)))
+        if rec.fingerprint
+        else []
+    )
 
-    measurements = _measure(rec, plant, readings, others, transfers)
+    measurements = _measure(rec, plant, readings, others, transfers, fingerprint_matches)
     risks = risk_service.check_risks(measurements)
     score = risk_service.score(risks)
     band = risk_service.band_for(score)
@@ -150,7 +156,8 @@ def _check_ledger(db: Session, rec: Rec) -> dict:
 
 
 def _measure(
-    rec: Rec, plant: Plant, readings: list[Generation], others: list[Rec], transfers: list[Transaction]
+    rec: Rec, plant: Plant, readings: list[Generation], others: list[Rec], transfers: list[Transaction],
+    fingerprint_matches: list[str] | None = None,
 ) -> dict[str, dict]:
     # Physics and anomaly checks need sunlight data; days without it are left out of both.
     sunny = [(r.energy_kwh, r.irradiation_kwh_m2) for r in readings if r.irradiation_kwh_m2 is not None]
@@ -172,7 +179,7 @@ def _measure(
         "physics": physics.assess(plant.capacity_kw, sunny_kwh, sunny_irradiation),
         "meter_match": duplicate.claim_vs_meter(claimed_kwh, metered_kwh, len(readings), period_days),
         "duplicate": duplicate.double_counting(
-            claimed_kwh, metered_kwh, (rec.period_start, rec.period_end), other_claims
+            claimed_kwh, metered_kwh, (rec.period_start, rec.period_end), other_claims, fingerprint_matches
         ),
         "anomaly": anomaly.assess(
             _get_anomaly_model(), anomaly.build_features(plant.capacity_kw, sunny_kwh, sunny_irradiation)
@@ -221,6 +228,9 @@ def _meter_match_summary(m: dict) -> str:
 
 
 def _duplicate_summary(m: dict) -> str:
+    if m.get("fingerprint_matches"):
+        ids = ", ".join(m["fingerprint_matches"])
+        return f"Identical generation fingerprint as {ids} - the same generation event, certified twice."
     if not m["overlapping_recs"]:
         return "No other REC claims this plant's generation for these dates."
     ids = ", ".join(o["rec_id"] for o in m["overlapping_recs"])

@@ -45,6 +45,34 @@ def test_claim_without_meter_data_is_not_a_zero_ratio():
     assert duplicate.claim_vs_meter(5_000, 0, 0, 15)["claim_ratio"] == duplicate.NO_BASELINE
 
 
+def test_fingerprint_is_deterministic():
+    args = ("PLT-001", "PLT-001-M1", date(2026, 4, 1), date(2026, 4, 1), 72.0)
+    assert duplicate.fingerprint(*args) == duplicate.fingerprint(*args)
+
+
+def test_fingerprint_changes_with_any_input():
+    base = duplicate.fingerprint("PLT-001", "PLT-001-M1", date(2026, 4, 1), date(2026, 4, 1), 72.0)
+    assert duplicate.fingerprint("PLT-002", "PLT-001-M1", date(2026, 4, 1), date(2026, 4, 1), 72.0) != base
+    assert duplicate.fingerprint("PLT-001", "PLT-001-M1", date(2026, 4, 1), date(2026, 4, 1), 72.1) != base
+
+
+def test_fingerprint_accepts_date_or_datetime():
+    # Report §7 example: Plant A, Meter M-01, 1 April 12:00-13:00, 72 MWh.
+    fp = duplicate.fingerprint(
+        "PLT-A", "M-01", datetime(2026, 4, 1, 12, 0), datetime(2026, 4, 1, 13, 0), 72.0
+    )
+    assert isinstance(fp, str) and len(fp) == 64
+
+
+def test_double_counting_reports_a_fingerprint_match_separately_from_overlap():
+    result = duplicate.double_counting(
+        claimed_kwh=72_000, metered_kwh=72_000,
+        period=(date(2026, 4, 1), date(2026, 4, 1)), other_claims=[],
+        fingerprint_matches=["REC-001"],
+    )
+    assert result["fingerprint_matches"] == ["REC-001"]
+
+
 def _chain(payloads):
     entries, prev = [], ledger.GENESIS_HASH
     for i, payload in enumerate(payloads, start=1):

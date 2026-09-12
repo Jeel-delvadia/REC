@@ -11,6 +11,7 @@ from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.engines.duplicate import fingerprint as compute_fingerprint
 from app.models import Alert, AuditAction, Generation, LedgerEntry, Meter, Plant, Rec, Transaction, VerificationResult
 from app.schemas.ingest_rows import GenerationRow, MeterRow, PlantRow, RecRow, TransactionRow
 from app.services import NotFoundError, audit_service, verification_service
@@ -111,6 +112,12 @@ def load_csv_data(db: Session, *, reset: bool = True, verify: bool = True, direc
             id=row.id, plant_id=row.plant_id, period_start=row.period_start, period_end=row.period_end,
             energy_mwh=row.energy_mwh, issued_at=row.issued_at, holder=row.holder,
             meter_id=row.meter_id, interval_start=row.interval_start, interval_end=row.interval_end, issuer=row.issuer,
+            # RS-05: interval_start/end fall back to the day-level period when a row predates
+            # hourly intervals, so every REC still gets a fingerprint.
+            fingerprint=compute_fingerprint(
+                row.plant_id, row.meter_id, row.interval_start or row.period_start,
+                row.interval_end or row.period_end, row.energy_mwh,
+            ),
         )
         for row in rec_rows
     ]

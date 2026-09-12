@@ -47,6 +47,8 @@ def _meter_match(m: dict) -> float:
 
 
 def _duplicate(m: dict) -> float:
+    if m.get("fingerprint_matches"):
+        return 1.0  # report §7: an exact fingerprint match is DOUBLE COUNTING DETECTED, full stop
     if not m["overlapping_recs"]:
         return 0.0
     return max(0.6, _ramp(m["total_claim_ratio"], 1.0, 1.5))
@@ -92,6 +94,8 @@ def _meter_match_reason(m: dict) -> str:
 
 
 def _duplicate_reason(m: dict) -> str:
+    if m.get("fingerprint_matches"):
+        return "DUPLICATE_FINGERPRINT_MATCH"
     return "DUPLICATE_OVERLAPPING_CLAIM" if m["overlapping_recs"] else "DUPLICATE_NONE_FOUND"
 
 

@@ -3,6 +3,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.database import utcnow
+from app.engines.duplicate import fingerprint as compute_fingerprint
 from app.models import AuditAction, Meter, Plant, Rec, Transaction, VerificationResult
 from app.schemas.rec import RecCreate
 from app.services import NotFoundError, audit_service
@@ -107,6 +108,10 @@ def create_rec(db: Session, data: RecCreate) -> dict:
         interval_start=data.interval_start,
         interval_end=data.interval_end,
         issuer=data.issuer,
+        fingerprint=compute_fingerprint(
+            data.plant_id, meter_id, data.interval_start or data.period_start,
+            data.interval_end or data.period_end, data.energy_mwh,
+        ),
     )
     db.add(rec)
 
