@@ -50,8 +50,9 @@ class CheckOut(BaseModel):
     label: str
     status: CheckStatus
     risk: float  # 0-1, from risk_service
-    weight: int  # points this check can contribute to the 0-100 score
+    weight: int  # points this check can contribute to the 0-100 score; 0 for a gate check
     summary: str
+    reason_code: str  # e.g. PHYSICS_CLAIM_ABOVE_ESTIMATE - the machine-readable half of summary
     details: dict[str, Any]
 
 
