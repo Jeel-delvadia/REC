@@ -112,7 +112,7 @@ def create_rec(db: Session, data: RecCreate) -> dict:
         "holder": rec.holder,
         "at": now.isoformat(),
     }
-    audit_service.append_ledger(db, "issued", rec.id, payload)
+    audit_service.append_ledger(db, "ISSUED", rec.id, payload)
     db.commit()
 
     # Automatically verify newly uploaded REC
