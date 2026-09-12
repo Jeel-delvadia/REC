@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
+from app.core.auth import Auditor, get_current_auditor
 from app.core.database import get_db
 from app.schemas.alert import AlertOut
 from app.services import alert_service
@@ -13,5 +14,6 @@ def list_alerts(
     open_only: bool = False,
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
+    viewer: Auditor = Depends(get_current_auditor),
 ):
-    return alert_service.list_alerts(db, open_only=open_only, limit=limit)
+    return alert_service.list_alerts(db, open_only=open_only, limit=limit, viewer=viewer)

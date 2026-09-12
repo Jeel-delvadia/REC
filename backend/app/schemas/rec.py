@@ -15,6 +15,24 @@ class PlantOut(ORMModel):
     longitude: float
     capacity_kw: float
     technology: str
+    location: str | None = None
+
+
+class PlantCreate(BaseModel):
+    """RS-19: registers a new generator/project on the fly instead of requiring a CSV
+    pre-seed via the Data Hub - the Upload modal's '+ Add New Plant' step posts this."""
+    name: str
+    owner: str
+    capacity_kw: float
+    technology: str = "solar"
+    location: str | None = None
+    # Optional: the physics-plausibility check needs real coordinates to fetch irradiation from
+    # Open-Meteo, but a first-time user often only knows a state/city. When omitted, the service
+    # tries to resolve a rough centroid from `location` text (see rec_service.STATE_CENTROIDS);
+    # if that also fails, it falls back to India's geographic center with a caveat in the response.
+    latitude: float | None = None
+    longitude: float | None = None
+    commissioned_on: date | None = None
 
 
 class RecCreate(BaseModel):
@@ -30,6 +48,13 @@ class RecCreate(BaseModel):
     interval_start: datetime | None = None
     interval_end: datetime | None = None
     issuer: str | None = None
+    # RS-19: real-certificate fields (see report). All optional - rec_service fills sensible
+    # defaults (rec_type from the plant's technology, issuing_authority from settings,
+    # generation_date from period_start) so older callers/tests that don't send them still work.
+    rec_type: str | None = None
+    issuing_authority: str | None = None
+    generation_date: date | None = None
+    rec_issued: int = 1
 
 
 
@@ -44,6 +69,11 @@ class RecSummary(ORMModel):
     status: RecStatus
     risk_score: int | None
     risk_band: RiskBand | None
+    rec_type: str | None = None
+    issuing_authority: str | None = None
+    generation_date: date | None = None
+    rec_issued: int = 1
+    certificate_status: str = "active"
 
 
 class RecPage(BaseModel):
@@ -84,3 +114,10 @@ class RecDetail(RecSummary):
     interval_end: datetime | None = None
     issuer: str | None = None
     fingerprint: str | None = None
+    # RS-23: the buyer account (if any) this REC is linked to - separate from `holder`, the
+    # free-text display name. None until an auditor/admin assigns it via POST .../buyer.
+    buyer_email: str | None = None
+
+
+class BuyerAssign(BaseModel):
+    buyer_email: str

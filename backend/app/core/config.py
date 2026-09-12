@@ -34,5 +34,8 @@ class Settings(BaseSettings):
     DATA_DIR: Path = BACKEND_DIR / "data" / "simulated"
     ANOMALY_MODEL_PATH: Path = BACKEND_DIR / "ml" / "artifacts" / "isolation_forest.joblib"
 
+    # RS-19: default REC certificate metadata when a caller doesn't supply it.
+    DEFAULT_ISSUING_AUTHORITY: str = "Central Electricity Regulatory Commission (CERC)"
+
 
 settings = Settings()

@@ -24,6 +24,13 @@ class PublicVerification(BaseModel):
     ledger_hash: str | None
     ledger_valid: bool
     verify_url: str
+    # RS-19: the certificate metadata a real REC carries (Issuing Authority, REC Type, etc.) -
+    # public precisely because these are the facts a verifier scanning the QR code wants to see.
+    rec_type: str | None
+    issuing_authority: str | None
+    generation_date: date | None
+    rec_issued: int
+    certificate_status: str
 
 
 class ReportOut(BaseModel):

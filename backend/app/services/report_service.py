@@ -37,7 +37,9 @@ def public_verification(db: Session, rec_id: str) -> dict:
     return {
         "rec_id": rec.id,
         "plant_name": plant.name,
-        "plant_location": f"{plant.latitude:.2f}, {plant.longitude:.2f}",
+        # Prefer the human-readable place name (RS-19); fall back to coordinates for plants
+        # seeded before that column existed, or created without a location string.
+        "plant_location": plant.location or f"{plant.latitude:.2f}, {plant.longitude:.2f}",
         "capacity_kw": plant.capacity_kw,
         "energy_mwh": rec.energy_mwh,
         "period_start": rec.period_start,
@@ -49,6 +51,11 @@ def public_verification(db: Session, rec_id: str) -> dict:
         "ledger_hash": audit_service.latest_hash(db, rec.id),
         "ledger_valid": audit_service.verify_ledger(db)["valid"],
         "verify_url": public_url(rec.id),
+        "rec_type": rec.rec_type,
+        "issuing_authority": rec.issuing_authority,
+        "generation_date": rec.generation_date,
+        "rec_issued": rec.rec_issued,
+        "certificate_status": rec.certificate_status,
     }
 
 

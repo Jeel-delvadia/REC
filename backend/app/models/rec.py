@@ -41,4 +41,22 @@ class Rec(Base):
     # investigates and decides, rather than the insert failing outright.
     fingerprint: Mapped[str | None] = mapped_column(String(64), index=True)
 
+    # RS-19: fields a real REC certificate carries that weren't modeled before - added nullable
+    # (generation_date/rec_issued default sensibly) so existing rows never need backfilling.
+    # Deliberately separate from `status` above: `status` is this app's audit-review workflow
+    # (pending/approved/rejected/reported), while `certificate_status` is the certificate's own
+    # lifecycle (active/redeemed/retired) - conflating the two would make "auditor hasn't looked
+    # at this yet" indistinguishable from "this REC was already redeemed against emissions".
+    rec_type: Mapped[str | None] = mapped_column(String(64))
+    issuing_authority: Mapped[str | None] = mapped_column(String(120))
+    generation_date: Mapped[date | None]
+    rec_issued: Mapped[int] = mapped_column(default=1)
+    certificate_status: Mapped[str] = mapped_column(String(16), default="active")  # active | redeemed | retired
+
+    # RS-21 (§9.5): which authenticated buyer account this REC is visible to, for the
+    # "buyer" role's own-held-RECs scoping. Deliberately separate from `holder` above - `holder`
+    # is a free-text display name ("Acme Sustainability Offsets") that may not correspond to any
+    # real account, while this is a real Supabase user id a buyer role can be checked against.
+    buyer_user_id: Mapped[str | None] = mapped_column(String(64), index=True)
+
     plant: Mapped[Plant] = relationship(lazy="joined")

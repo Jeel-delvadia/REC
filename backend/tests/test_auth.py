@@ -5,6 +5,9 @@ tested against a real RSA keypair generated in-test, with the network fetch itse
 (auth._get_jwks_client monkeypatched to a stub whose get_signing_key_from_jwt returns our key
 directly) - PyJWT's own signature verification still runs for real against it.
 Restores the module's cached settings/client after each test so these don't leak elsewhere.
+
+RS-21 (§9.5) adds role resolution against UserProfile, which needs a real (in-memory
+SQLite) database session now - `db` below, fresh per test via Base.metadata.create_all().
 """
 import time
 from types import SimpleNamespace
@@ -13,11 +16,24 @@ import jwt
 import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import HTTPException
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from app.core import auth
 from app.core.config import settings
+from app.core.database import Base
+import app.models  # noqa: F401  (registers every table on Base.metadata)
 
 TEST_SECRET = "unit-test-secret-do-not-use-in-production"
+
+
+@pytest.fixture
+def db():
+    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+    Base.metadata.create_all(bind=engine)
+    session = sessionmaker(bind=engine)()
+    yield session
+    session.close()
 
 
 def _new_rsa_key():
@@ -75,80 +91,191 @@ def _rsa_token(private_key, **overrides):
     return jwt.encode(claims, private_key, algorithm="RS256")
 
 
-def test_neither_configured_falls_back_to_local_dev(monkeypatch):
+def test_neither_configured_falls_back_to_local_dev(monkeypatch, db):
     # Force the soft-gated-off state rather than assuming the environment starts empty - a
     # developer's own .env legitimately sets these once Supabase is configured, and this test
     # broke exactly that way the first time it ran against a real backend/.env (found live).
     monkeypatch.setattr(settings, "SUPABASE_JWT_SECRET", "")
     monkeypatch.setattr(settings, "SUPABASE_URL", "")
-    result = auth.get_current_auditor(authorization=None)
+    result = auth.get_current_auditor(authorization=None, db=db)
     assert result.email == auth.LOCAL_DEV_AUDITOR
+    # RS-21: local-dev gets full access - there's no real user to scope down to, and every
+    # existing demo/test run assumes an unconfigured Supabase means "everything works".
+    assert result.role == "registry_admin"
 
 
-def test_jwks_path_accepts_a_correctly_signed_token(with_jwks):
-    result = auth.get_current_auditor(authorization=f"Bearer {_rsa_token(with_jwks)}")
+def test_jwks_path_accepts_a_correctly_signed_token(with_jwks, db):
+    result = auth.get_current_auditor(authorization=f"Bearer {_rsa_token(with_jwks)}", db=db)
     assert result.email == "auditor@example.com"
     assert result.id == "22222222-2222-2222-2222-222222222222"
 
 
-def test_jwks_path_rejects_a_token_signed_by_a_different_key(with_jwks):
+def test_jwks_path_rejects_a_token_signed_by_a_different_key(with_jwks, db):
     other_key = _new_rsa_key()  # a token from an attacker's own keypair, not the project's
     with pytest.raises(HTTPException) as exc:
-        auth.get_current_auditor(authorization=f"Bearer {_rsa_token(other_key)}")
+        auth.get_current_auditor(authorization=f"Bearer {_rsa_token(other_key)}", db=db)
     assert exc.value.status_code == 401
 
 
-def test_jwt_secret_takes_priority_over_jwks_when_both_are_set(with_jwks, monkeypatch):
+def test_jwt_secret_takes_priority_over_jwks_when_both_are_set(with_jwks, monkeypatch, db):
     # HS256 is checked first (settings.SUPABASE_JWT_SECRET) - a JWKS-signed token must not
     # slip through if a secret is also configured, since _decode() would try HS256 on it.
     monkeypatch.setattr(settings, "SUPABASE_JWT_SECRET", TEST_SECRET)
     with pytest.raises(HTTPException):
-        auth.get_current_auditor(authorization=f"Bearer {_rsa_token(with_jwks)}")
+        auth.get_current_auditor(authorization=f"Bearer {_rsa_token(with_jwks)}", db=db)
 
 
-def test_valid_token_is_accepted(with_secret):
-    result = auth.get_current_auditor(authorization=f"Bearer {_token()}")
+def test_valid_token_is_accepted(with_secret, db):
+    result = auth.get_current_auditor(authorization=f"Bearer {_token()}", db=db)
     assert result.email == "auditor@example.com"
     assert result.id == "11111111-1111-1111-1111-111111111111"
 
 
-def test_missing_header_is_rejected(with_secret):
+def test_missing_header_is_rejected(with_secret, db):
     with pytest.raises(HTTPException) as exc:
-        auth.get_current_auditor(authorization=None)
+        auth.get_current_auditor(authorization=None, db=db)
     assert exc.value.status_code == 401
 
 
-def test_missing_bearer_prefix_is_rejected(with_secret):
+def test_missing_bearer_prefix_is_rejected(with_secret, db):
     with pytest.raises(HTTPException) as exc:
-        auth.get_current_auditor(authorization=_token())  # no "Bearer " prefix
+        auth.get_current_auditor(authorization=_token(), db=db)  # no "Bearer " prefix
     assert exc.value.status_code == 401
 
 
-def test_wrong_secret_is_rejected(with_secret):
+def test_wrong_secret_is_rejected(with_secret, db):
     with pytest.raises(HTTPException) as exc:
-        auth.get_current_auditor(authorization=f"Bearer {_token(secret='someone-elses-secret-of-a-similar-length')}")
+        auth.get_current_auditor(authorization=f"Bearer {_token(secret='someone-elses-secret-of-a-similar-length')}", db=db)
     assert exc.value.status_code == 401
 
 
-def test_expired_token_is_rejected(with_secret):
+def test_expired_token_is_rejected(with_secret, db):
     stale = _token(exp=int(time.time()) - 60)
     with pytest.raises(HTTPException) as exc:
-        auth.get_current_auditor(authorization=f"Bearer {stale}")
+        auth.get_current_auditor(authorization=f"Bearer {stale}", db=db)
     assert exc.value.status_code == 401
     assert "expired" in exc.value.detail.lower()
 
 
-def test_wrong_audience_is_rejected(with_secret):
+def test_wrong_audience_is_rejected(with_secret, db):
     # e.g. a service-role key or a token from a different Supabase project
     with pytest.raises(HTTPException):
-        auth.get_current_auditor(authorization=f"Bearer {_token(aud='some-other-audience')}")
+        auth.get_current_auditor(authorization=f"Bearer {_token(aud='some-other-audience')}", db=db)
 
 
-def test_token_without_email_claim_is_rejected(with_secret):
+def test_token_without_email_claim_is_rejected(with_secret, db):
     stripped = jwt.encode(
         {"sub": "x", "aud": "authenticated", "role": "authenticated", "exp": int(time.time()) + 3600},
         TEST_SECRET, algorithm="HS256",
     )
     with pytest.raises(HTTPException) as exc:
-        auth.get_current_auditor(authorization=f"Bearer {stripped}")
+        auth.get_current_auditor(authorization=f"Bearer {stripped}", db=db)
     assert "email" in exc.value.detail.lower()
+
+
+# --- RS-21 (§9.5): role resolution and require_role ---------------------------------------
+
+
+def test_first_sign_in_is_auto_provisioned_as_auditor(with_secret, db):
+    """No UserProfile row exists yet for this user - the old (pre-RBAC) behavior was that any
+    signed-in user could audit, so a first-time sign-in should land as "auditor", not locked out."""
+    result = auth.get_current_auditor(authorization=f"Bearer {_token()}", db=db)
+    assert result.role == "auditor"
+    profile = db.get(auth.UserProfile, "11111111-1111-1111-1111-111111111111")
+    assert profile is not None
+    assert profile.role == "auditor"
+
+
+def test_existing_profile_role_is_used(with_secret, db):
+    from app.models import UserProfile
+    db.add(UserProfile(id="11111111-1111-1111-1111-111111111111", email="auditor@example.com", role="registry_admin"))
+    db.commit()
+    result = auth.get_current_auditor(authorization=f"Bearer {_token()}", db=db)
+    assert result.role == "registry_admin"
+
+
+def test_plant_operator_role_carries_plant_id(with_secret, db):
+    from app.models import UserProfile
+    db.add(UserProfile(
+        id="11111111-1111-1111-1111-111111111111", email="auditor@example.com",
+        role="plant_operator", plant_id="PLT-001",
+    ))
+    db.commit()
+    result = auth.get_current_auditor(authorization=f"Bearer {_token()}", db=db)
+    assert result.role == "plant_operator"
+    assert result.plant_id == "PLT-001"
+
+
+def test_require_role_allows_listed_roles(with_secret, db):
+    dependency = auth.require_role("registry_admin", "auditor")
+    caller = auth.get_current_auditor(authorization=f"Bearer {_token()}", db=db)  # auto-provisioned "auditor"
+    result = dependency(auditor=caller)
+    assert result.role == "auditor"
+
+
+def test_require_role_rejects_other_roles(with_secret, db):
+    from app.models import UserProfile
+    db.add(UserProfile(id="11111111-1111-1111-1111-111111111111", email="auditor@example.com", role="buyer"))
+    db.commit()
+    caller = auth.get_current_auditor(authorization=f"Bearer {_token()}", db=db)
+    dependency = auth.require_role("registry_admin", "auditor")
+    with pytest.raises(HTTPException) as exc:
+        dependency(auditor=caller)
+    assert exc.value.status_code == 403
+
+
+# --- RS-22: self-service role selection at signup, via Supabase user_metadata --------------
+
+
+def test_signup_role_choice_is_honored_on_first_sign_in(with_secret, db):
+    token = _token(user_metadata={"role": "buyer"})
+    result = auth.get_current_auditor(authorization=f"Bearer {token}", db=db)
+    assert result.role == "buyer"
+
+
+def test_signup_role_choice_carries_plant_id_for_plant_operator(with_secret, db):
+    token = _token(user_metadata={"role": "plant_operator", "plant_id": "PLT-004"})
+    result = auth.get_current_auditor(authorization=f"Bearer {token}", db=db)
+    assert result.role == "plant_operator"
+    assert result.plant_id == "PLT-004"
+
+
+def test_plant_id_ignored_unless_role_is_plant_operator(with_secret, db):
+    # A buyer signup accidentally (or deliberately) carrying a plant_id shouldn't get scoped
+    # like a plant_operator - plant_id only means something for that one role.
+    token = _token(user_metadata={"role": "buyer", "plant_id": "PLT-004"})
+    result = auth.get_current_auditor(authorization=f"Bearer {token}", db=db)
+    assert result.role == "buyer"
+    assert result.plant_id is None
+
+
+def test_requesting_registry_admin_via_metadata_is_ignored(with_secret, db):
+    # The security-critical case: user_metadata is client-supplied (anyone can call Supabase's
+    # own signUp() with arbitrary options.data), so a forged "registry_admin" request must not
+    # be honored - it should fall back to the same default an unrecognised role would get.
+    token = _token(user_metadata={"role": "registry_admin"})
+    result = auth.get_current_auditor(authorization=f"Bearer {token}", db=db)
+    assert result.role == "auditor"
+
+
+def test_unrecognised_requested_role_falls_back_to_default(with_secret, db):
+    token = _token(user_metadata={"role": "superuser"})
+    result = auth.get_current_auditor(authorization=f"Bearer {token}", db=db)
+    assert result.role == "auditor"
+
+
+def test_missing_metadata_falls_back_to_default(with_secret, db):
+    # No user_metadata at all (e.g. a token from before this feature existed) shouldn't crash.
+    result = auth.get_current_auditor(authorization=f"Bearer {_token()}", db=db)
+    assert result.role == "auditor"
+
+
+def test_metadata_role_is_only_consulted_on_first_sign_in(with_secret, db):
+    from app.models import UserProfile
+    # An admin already set this account to registry_admin - a later token carrying signup-style
+    # metadata (however it got there) must never overwrite an already-provisioned profile.
+    db.add(UserProfile(id="11111111-1111-1111-1111-111111111111", email="auditor@example.com", role="registry_admin"))
+    db.commit()
+    token = _token(user_metadata={"role": "buyer"})
+    result = auth.get_current_auditor(authorization=f"Bearer {token}", db=db)
+    assert result.role == "registry_admin"

@@ -5,6 +5,14 @@ from app.core.database import utcnow
 from app.models import Alert, Rec
 from app.services.risk_service import FRAUD_BAND
 
+# RS-21: rec_service imports audit_service, which imports this module (for raise_for_*) - a
+# module-level `from app.services.rec_service import visible_to_clause` here closes that into
+# an import cycle. It only broke when something imported rec_service directly before anything
+# else touched app.services (e.g. a standalone script) - the FastAPI app's own startup order
+# happened to load audit_service first, which papered over it. Deferred into list_alerts()
+# below instead: by the time any function actually runs, every module has finished loading
+# regardless of which one a caller happened to import first.
+
 
 def _open_alert(db: Session, rec_id: str, severity: str, title: str, message: str) -> Alert | None:
     """Skip raising a duplicate of an alert that's already open for this REC and severity."""
@@ -54,8 +62,15 @@ def acknowledge_for_rec(db: Session, rec_id: str) -> None:
     db.execute(update(Alert).where(Alert.rec_id == rec_id, Alert.acknowledged.is_(False)).values(acknowledged=True))
 
 
-def list_alerts(db: Session, *, open_only: bool = False, limit: int = 50) -> list[Alert]:
+def list_alerts(db: Session, *, open_only: bool = False, limit: int = 50, viewer=None) -> list[Alert]:
+    # RS-21 (§9.5): a plant_operator/buyer only sees alerts for RECs visible to them - same
+    # scoping rule as the REC list and dashboard, joined through here since Alert only carries
+    # a rec_id, not a plant_id/buyer_user_id of its own.
+    from app.services.rec_service import visible_to_clause  # deferred - see module docstring above
+    scope = visible_to_clause(viewer)
     query = select(Alert).order_by(Alert.created_at.desc(), Alert.id.desc()).limit(limit)
+    if scope:
+        query = query.join(Rec, Rec.id == Alert.rec_id).where(*scope)
     if open_only:
         query = query.where(Alert.acknowledged.is_(False))
     return list(db.scalars(query).all())

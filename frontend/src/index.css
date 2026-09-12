@@ -1,121 +1,209 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
-/* Design tokens - restrained enterprise/compliance palette (Stripe Radar / Unit21 style):
-   one controlled accent, solid surfaces instead of glassmorphism, semantic color reserved
-   for risk state only. Frontend-only change - nothing here touches API calls or auth. */
+/* ============================================================
+   RECShield design system - light enterprise theme.
+   Green = trust/verified. Amber = suspicion. Red = fraud/risk.
+   Blue is reserved for ledger/technical/informational context,
+   never for risk state - keeps the risk vocabulary unambiguous.
+   ============================================================ */
 :root {
-  --bg-main: #0a0e16;
-  --surface: #10151f;
-  --surface-raised: #141b28;
-  --border-subtle: rgba(148, 163, 184, 0.14);
-  --border-strong: rgba(148, 163, 184, 0.24);
-  --accent: #3b82f6;
-  --accent-strong: #2563eb;
+  --bg-app: #f7f9fc;
+  --surface: #ffffff;
+  --surface-sunken: #fafbfd;
+
+  --brand: #087f5b;
+  --brand-secondary: #16a085;
+  --brand-accent: #36c9a5;
+
+  --text-primary: #172033;
+  --text-secondary: #667085;
+  --text-tertiary: #98a2b3;
+
+  --border: #e6eaf0;
+  --border-strong: #d0d5dd;
+
+  --risk-genuine: #12b76a;
+  --risk-suspicious: #f79009;
+  --risk-high: #f04438;
+  --risk-fraud: #d92d20;
+  --info: #3b82f6; /* ledger / technical information only - never a risk state */
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+
+  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-sm: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.06), 0 2px 4px rgba(16, 24, 40, 0.04);
 }
 
 body {
-  background-color: var(--bg-main);
-  color: #f1f5f9;
+  background-color: var(--bg-app);
+  color: var(--text-primary);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
   min-height: 100vh;
   overflow-x: hidden;
-  /* A single, faint gradient instead of three overlapping neon ones - enough to keep the dark
-     UI from feeling flat without reading as a marketing/crypto hero. */
-  background-image: radial-gradient(at 50% 0%, rgba(59, 130, 246, 0.07) 0px, transparent 60%);
-  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
 }
 
 code, pre, .font-mono {
   font-family: 'JetBrains Mono', monospace;
 }
 
-/* Solid enterprise card - replaces the earlier backdrop-blur glass panel, which read more
-   consumer/crypto than compliance tooling. Also sidesteps backdrop-filter's containing-block
-   effect on position:fixed descendants (the modal popup bug). */
-.glass-panel {
+/* Tabular figures for anything numeric that sits in a fixed-width context (KPI values, table
+   columns of numbers) - confident, aligned digits without switching to a monospace face. */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Surfaces ---------- */
+.card {
   background: var(--surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 0.75rem;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
 }
 
-.glass-card-glow {
-  position: relative;
-  overflow: hidden;
+.card-interactive {
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.card-interactive:hover {
+  box-shadow: var(--shadow-sm);
+  border-color: var(--border-strong);
 }
 
-.glass-card-glow::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  opacity: 0.45;
+.surface-sunken {
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
 }
 
-/* Risk Badges - report §6 band names: genuine / suspicious / high_risk / likely_fraud.
-   Flat semantic chips, no glow - severity reads from color + label, not decoration. */
+/* ---------- Risk badges - report §6 band names. Flat, no glow: severity reads from the
+   word and the color together, never from decoration. ---------- */
 .badge-genuine {
-  background-color: rgba(16, 185, 129, 0.12);
-  color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.28);
+  background-color: rgba(18, 183, 106, 0.1);
+  color: #067647;
+  border: 1px solid rgba(18, 183, 106, 0.24);
 }
-
 .badge-suspicious {
-  background-color: rgba(245, 158, 11, 0.12);
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.28);
+  background-color: rgba(247, 144, 9, 0.1);
+  color: #b54708;
+  border: 1px solid rgba(247, 144, 9, 0.24);
 }
-
 .badge-high_risk {
-  background-color: rgba(244, 63, 94, 0.12);
-  color: #fb7185;
-  border: 1px solid rgba(244, 63, 94, 0.28);
+  background-color: rgba(240, 68, 56, 0.1);
+  color: #b42318;
+  border: 1px solid rgba(240, 68, 56, 0.24);
 }
-
 .badge-likely_fraud {
-  background-color: rgba(168, 85, 247, 0.14);
-  color: #c084fc;
-  border: 1px solid rgba(168, 85, 247, 0.3);
+  background-color: rgba(217, 45, 32, 0.12);
+  color: #912018;
+  border: 1px solid rgba(217, 45, 32, 0.28);
+}
+.badge-info {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #1d4ed8;
+  border: 1px solid rgba(59, 130, 246, 0.24);
+}
+.badge-neutral {
+  background-color: #f2f4f7;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
 }
 
-/* Primary/secondary action buttons - solid fills instead of the earlier sky-to-cyan gradients,
-   matching how Stripe/Unit21-style compliance dashboards treat primary actions. */
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.8125rem;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .btn-primary {
-  background-color: var(--accent);
+  background-color: var(--brand);
   color: #ffffff;
-  transition: background-color 0.15s ease;
+  box-shadow: var(--shadow-xs);
 }
 .btn-primary:hover:not(:disabled) {
-  background-color: var(--accent-strong);
+  background-color: #066a4c;
+}
+.btn-secondary {
+  background-color: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+}
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--surface-sunken);
+}
+.btn-ghost {
+  background-color: transparent;
+  color: var(--text-secondary);
+}
+.btn-ghost:hover:not(:disabled) {
+  background-color: var(--surface-sunken);
+  color: var(--text-primary);
+}
+.btn-danger {
+  background-color: #fef3f2;
+  color: var(--risk-fraud);
+  border: 1px solid rgba(217, 45, 32, 0.24);
+}
+.btn-danger:hover:not(:disabled) {
+  background-color: #fee4e2;
 }
 
-@keyframes modal-enter {
-  from { opacity: 0; transform: translateY(8px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-.animate-modal-enter {
-  animation: modal-enter 0.18s ease-out;
+/* ---------- Empty / loading / error states ---------- */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 3rem 1rem;
+  color: var(--text-tertiary);
+  text-align: center;
 }
 
-/* Custom Scrollbars */
+/* ---------- Accessibility ---------- */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
+
+/* ---------- Scrollbars ---------- */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
-
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.8);
+  background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: rgba(51, 65, 85, 0.8);
+  background: var(--border-strong);
   border-radius: 9999px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(71, 85, 105, 1);
+  background: var(--text-tertiary);
 }

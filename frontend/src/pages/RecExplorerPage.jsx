@@ -1,14 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { 
-  Database, Search, Filter, RefreshCw, ChevronLeft, ChevronRight, 
-  Building, Zap, Calendar, User, ShieldCheck, ShieldAlert, PlusCircle, Upload
+import {
+  Database, Search, RefreshCw, ChevronLeft, ChevronRight, PlusCircle,
 } from 'lucide-react';
 import { fetchRecs } from '../api/client';
 import RecDetailModal from '../components/rec/RecDetailModal';
 import UploadCertificateModal from '../components/rec/UploadCertificateModal';
+import { useAuth } from '../lib/AuthContext';
+import { canIssueOrIngest } from '../lib/permissions';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import RiskBadge from '../components/ui/RiskBadge';
+import DataTable from '../components/ui/DataTable';
+import { LoadingState, EmptyState } from '../components/ui/States';
 
 export default function RecExplorerPage() {
+  const { role } = useAuth();
+  const canUpload = canIssueOrIngest(role);
   const [searchParams, setSearchParams] = useSearchParams();
   const [recs, setRecs] = useState([]);
   const [total, setTotal] = useState(0);
@@ -77,241 +85,169 @@ export default function RecExplorerPage() {
     setPage(1);
   };
 
-  const getBadgeClass = (b) => {
-    switch (b) {
-      case 'genuine': return 'badge-genuine';
-      case 'suspicious': return 'badge-suspicious';
-      case 'high_risk': return 'badge-high_risk';
-      case 'likely_fraud': return 'badge-likely_fraud';
-      default: return 'bg-slate-800 text-slate-300';
-    }
-  };
-
   const totalPages = Math.ceil(total / limit) || 1;
+  const fieldClass = 'w-full bg-[var(--surface)] border border-[var(--border-strong)] focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)]/25 rounded-lg px-3 py-1.5 text-xs text-[var(--text-primary)] outline-none transition-colors';
+
+  const columns = [
+    { key: 'id', header: 'REC ID', render: (r) => <span className="font-mono font-semibold text-[var(--brand)]">{r.id}</span> },
+    {
+      key: 'plant', header: 'Plant', render: (r) => (
+        <div>
+          <div className="font-medium text-[var(--text-primary)]">{r.plant_name}</div>
+          <div className="text-[10px] text-[var(--text-tertiary)] font-mono">{r.plant_id}</div>
+        </div>
+      ),
+    },
+    { key: 'energy_mwh', header: 'Energy', render: (r) => <span className="font-mono tabular-nums">{r.energy_mwh.toLocaleString()} MWh</span> },
+    { key: 'period', header: 'Period', render: (r) => <span className="text-[var(--text-secondary)]">{r.period_start} &rarr; {r.period_end}</span> },
+    { key: 'holder', header: 'Holder', render: (r) => <span className="max-w-[160px] truncate block text-[var(--text-secondary)]">{r.holder}</span> },
+    { key: 'risk_band', header: 'Risk', render: (r) => <RiskBadge band={r.risk_band} score={r.risk_score} size="sm" /> },
+    { key: 'status', header: 'Status', render: (r) => <span className="capitalize text-[var(--text-secondary)]">{r.status}</span> },
+    {
+      key: 'action', header: '', align: 'right',
+      render: (r) => <Button variant="secondary" size="sm" onClick={() => setSelectedRecId(r.id)}>Inspect</Button>,
+    },
+  ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 lg:px-8 py-8 space-y-6">
-      
+    <div className="max-w-[1400px] mx-auto space-y-6">
+
       {/* Header Title */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-3">
-            <Database className="w-6 h-6 text-blue-400" />
-            <span>Renewable Energy Certificate Registry Explorer</span>
-          </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Search, filter, issue, and inspect verified green energy certificates across solar assets.
+          <h1 className="text-xl font-bold text-[var(--text-primary)] tracking-tight">REC Explorer</h1>
+          <p className="text-sm text-[var(--text-secondary)] mt-1">
+            Search, filter, and inspect every certificate in the registry.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowUploadModal(true)}
-            className="btn-primary flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-colors"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>Upload / Issue Certificate</span>
-          </button>
-        </div>
+        {canUpload && (
+          <Button variant="primary" size="md" icon={PlusCircle} onClick={() => setShowUploadModal(true)}>
+            Issue Certificate
+          </Button>
+        )}
       </div>
 
       {/* Filter Controls Bar */}
-      <form onSubmit={handleApplyFilters} className="glass-panel p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3 items-end">
-        <div className="xl:col-span-2">
-          <label className="block text-[11px] text-slate-400 font-medium mb-1">Search Keywords</label>
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="REC ID, plant, holder..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 outline-none"
-            />
-            <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-[11px] text-slate-400 font-medium mb-1">Risk Band</label>
-          <select
-            value={band}
-            onChange={(e) => setBand(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none capitalize"
-          >
-            <option value="">All Risk Bands</option>
-            <option value="genuine">Genuine (0-30)</option>
-            <option value="suspicious">Suspicious (31-60)</option>
-            <option value="high_risk">High Risk (61-80)</option>
-            <option value="likely_fraud">Likely Fraud (81-100)</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-[11px] text-slate-400 font-medium mb-1">Audit Status</label>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none capitalize"
-          >
-            <option value="">All Statuses</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
-            <option value="reported">Reported</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-[11px] text-slate-400 font-medium mb-1">Min Risk Score</label>
-          <input
-            type="number"
-            min="0"
-            max="100"
-            placeholder="e.g. 50"
-            value={minScore}
-            onChange={(e) => setMinScore(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none font-mono"
-          />
-        </div>
-
-        <div>
-          <label className="block text-[11px] text-slate-400 font-medium mb-1">Period From</label>
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-lg px-2 py-1.5 text-xs text-slate-200 outline-none"
-          />
-        </div>
-
-        <div>
-          <label className="block text-[11px] text-slate-400 font-medium mb-1">Period To</label>
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-lg px-2 py-1.5 text-xs text-slate-200 outline-none"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 sm:col-span-2 md:col-span-1 xl:col-span-7">
-          <button
-            type="submit"
-            className="flex-1 py-1.5 px-3 btn-primary rounded-lg font-bold text-xs"
-          >
-            Apply Filters
-          </button>
-          <button
-            type="button"
-            onClick={handleResetFilters}
-            className="py-1.5 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors"
-          >
-            Reset
-          </button>
-        </div>
-      </form>
-
-      {/* Main RECs Data Table */}
-      <div className="glass-panel overflow-hidden">
-        {loading ? (
-          <div className="py-20 flex flex-col items-center justify-center text-slate-400 gap-3">
-            <RefreshCw className="w-8 h-8 animate-spin text-blue-400" />
-            <p className="text-sm font-semibold">Querying certificates database...</p>
-          </div>
-        ) : recs.length === 0 ? (
-          <div className="py-20 text-center text-slate-400 space-y-2">
-            <p className="text-sm font-semibold text-slate-300">No certificates match your query filter</p>
-            <p className="text-xs text-slate-500">Try clearing filters or issuing a new certificate.</p>
-            <div className="flex items-center justify-center gap-3 pt-2">
-              <button onClick={handleResetFilters} className="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold">
-                Clear All Filters
-              </button>
-              <button onClick={() => setShowUploadModal(true)} className="px-4 py-1.5 rounded-lg bg-blue-500/20 text-blue-300 text-xs font-bold border border-blue-500/30">
-                Upload New Certificate
-              </button>
+      <Card padding="p-4">
+        <form onSubmit={handleApplyFilters} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3 items-end">
+          <div className="xl:col-span-2">
+            <label className="block text-[11px] text-[var(--text-secondary)] font-medium mb-1">Search</label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="REC ID, plant, holder..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className={`${fieldClass} pl-8`}
+              />
+              <Search className="w-3.5 h-3.5 text-[var(--text-tertiary)] absolute left-2.5 top-2.5" />
             </div>
           </div>
+
+          <div>
+            <label className="block text-[11px] text-[var(--text-secondary)] font-medium mb-1">Risk Band</label>
+            <select value={band} onChange={(e) => setBand(e.target.value)} className={`${fieldClass} capitalize`}>
+              <option value="">All Risk Bands</option>
+              <option value="genuine">Genuine (0-30)</option>
+              <option value="suspicious">Suspicious (31-60)</option>
+              <option value="high_risk">High Risk (61-80)</option>
+              <option value="likely_fraud">Likely Fraud (81-100)</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[11px] text-[var(--text-secondary)] font-medium mb-1">Audit Status</label>
+            <select value={status} onChange={(e) => setStatus(e.target.value)} className={`${fieldClass} capitalize`}>
+              <option value="">All Statuses</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+              <option value="reported">Reported</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[11px] text-[var(--text-secondary)] font-medium mb-1">Min Risk Score</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              placeholder="e.g. 50"
+              value={minScore}
+              onChange={(e) => setMinScore(e.target.value)}
+              className={`${fieldClass} font-mono`}
+            />
+          </div>
+
+          <div>
+            <label className="block text-[11px] text-[var(--text-secondary)] font-medium mb-1">Period From</label>
+            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className={fieldClass} />
+          </div>
+
+          <div>
+            <label className="block text-[11px] text-[var(--text-secondary)] font-medium mb-1">Period To</label>
+            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className={fieldClass} />
+          </div>
+
+          <div className="flex items-center gap-2 sm:col-span-2 md:col-span-1 xl:col-span-7">
+            <button type="submit" className="btn btn-primary flex-1 py-1.5 px-3 text-xs justify-center">
+              Apply Filters
+            </button>
+            <button type="button" onClick={handleResetFilters} className="btn btn-secondary py-1.5 px-3 text-xs">
+              Reset
+            </button>
+          </div>
+        </form>
+      </Card>
+
+      {/* Main RECs Data Table */}
+      <Card padding="p-0" className="overflow-hidden">
+        {loading ? (
+          <LoadingState label="Loading certificates…" />
+        ) : recs.length === 0 ? (
+          <EmptyState
+            icon={Database}
+            title="No certificates match this filter"
+            action={
+              <div className="flex items-center justify-center gap-3 pt-2">
+                <Button variant="secondary" size="sm" onClick={handleResetFilters}>Clear filters</Button>
+                {canUpload && <Button variant="primary" size="sm" onClick={() => setShowUploadModal(true)}>Issue a certificate</Button>}
+              </div>
+            }
+          />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-800 bg-slate-950/60 text-slate-400 uppercase tracking-wider text-[10px]">
-                  <th className="py-3 px-4">REC ID</th>
-                  <th className="py-3 px-4">Plant Name</th>
-                  <th className="py-3 px-4 font-mono">Energy MWh</th>
-                  <th className="py-3 px-4">Period Dates</th>
-                  <th className="py-3 px-4">Current Holder</th>
-                  <th className="py-3 px-4">Risk Score / Band</th>
-                  <th className="py-3 px-4 text-center">Status</th>
-                  <th className="py-3 px-4 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {recs.map((rec) => (
-                  <tr key={rec.id} className="hover:bg-slate-800/40 transition-colors group">
-                    <td className="py-3.5 px-4 font-mono font-bold text-blue-400">{rec.id}</td>
-                    <td className="py-3.5 px-4">
-                      <div className="font-semibold text-slate-200">{rec.plant_name}</div>
-                      <div className="text-[10px] text-slate-500 font-mono">ID: {rec.plant_id}</div>
-                    </td>
-                    <td className="py-3.5 px-4 font-mono font-bold text-amber-400">
-                      {rec.energy_mwh.toLocaleString()} MWh
-                    </td>
-                    <td className="py-3.5 px-4 text-slate-300">
-                      {rec.period_start} to {rec.period_end}
-                    </td>
-                    <td className="py-3.5 px-4 font-medium text-purple-300 max-w-[160px] truncate">
-                      {rec.holder}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase ${getBadgeClass(rec.risk_band)}`}>
-                        {rec.risk_band || 'unverified'} ({rec.risk_score ?? 'N/A'})
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-center capitalize font-semibold text-slate-300">
-                      {rec.status}
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => setSelectedRecId(rec.id)}
-                        className="px-3.5 py-1.5 rounded-lg bg-blue-500/15 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 text-xs font-bold transition-all shadow-sm group-hover:border-blue-400"
-                      >
-                        Inspect Audit
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="p-1">
+            <DataTable columns={columns} rows={recs} onRowClick={(r) => setSelectedRecId(r.id)} />
           </div>
         )}
 
         {/* Pagination Bar */}
         {totalPages > 1 && (
-          <div className="p-4 border-t border-slate-800 flex items-center justify-between bg-slate-950/40">
-            <span className="text-xs text-slate-400">
-              Page <span className="font-bold text-white">{page}</span> of <span className="font-bold text-white">{totalPages}</span>
+          <div className="p-4 border-t border-[var(--border)] flex items-center justify-between bg-[var(--surface-sunken)]">
+            <span className="text-xs text-[var(--text-secondary)]">
+              Page <span className="font-bold text-[var(--text-primary)] tabular-nums">{page}</span> of <span className="font-bold text-[var(--text-primary)] tabular-nums">{totalPages}</span>
             </span>
 
             <div className="flex items-center gap-2">
               <button
                 disabled={page === 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-800 disabled:opacity-40 transition-colors"
+                className="p-1.5 rounded-lg bg-[var(--surface)] border border-[var(--border-strong)] text-[var(--text-secondary)] hover:bg-[var(--surface-sunken)] disabled:opacity-40 transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button
                 disabled={page === totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-800 disabled:opacity-40 transition-colors"
+                className="p-1.5 rounded-lg bg-[var(--surface)] border border-[var(--border-strong)] text-[var(--text-secondary)] hover:bg-[var(--surface-sunken)] disabled:opacity-40 transition-colors"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* REC Upload Certificate Modal */}
       {showUploadModal && (
