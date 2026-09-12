@@ -55,7 +55,9 @@ def _duplicate(m: dict) -> float:
 
 
 def _anomaly(m: dict) -> float:
-    return _ramp(m["fraction"], 0.05, 0.30) if m["available"] else 0.0
+    if not m["available"]:
+        return 0.0
+    return 1.0 if m["is_anomalous"] else _ramp(m["anomaly_score"], 0.5, 0.85)
 
 
 def _provenance(m: dict) -> float:
@@ -102,7 +104,7 @@ def _duplicate_reason(m: dict) -> str:
 def _anomaly_reason(m: dict) -> str:
     if not m["available"]:
         return "ANOMALY_MODEL_UNAVAILABLE"
-    return "ANOMALY_UNUSUAL_PATTERN" if m["fraction"] > 0.05 else "ANOMALY_NORMAL_PATTERN"
+    return "ANOMALY_UNUSUAL_PATTERN" if m["is_anomalous"] else "ANOMALY_NORMAL_PATTERN"
 
 
 def _provenance_reason(m: dict) -> str:

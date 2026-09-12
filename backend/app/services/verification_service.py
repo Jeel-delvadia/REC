@@ -1,8 +1,10 @@
 """Runs every engine for one REC, scores the results, explains them, and records the outcome."""
 import logging
+from collections import defaultdict
+from datetime import timedelta
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -62,6 +64,7 @@ def verify_rec(db: Session, rec_id: str, *, use_llm: bool = True) -> Verificatio
     )
 
     measurements = _measure(rec, plant, readings, others, transfers, fingerprint_matches)
+    measurements["anomaly"] = anomaly.assess(_get_anomaly_model(), _anomaly_features(db, rec, plant, readings, measurements))
     risks = risk_service.check_risks(measurements)
     score = risk_service.score(risks)
     band = risk_service.band_for(score)
@@ -181,11 +184,52 @@ def _measure(
         "duplicate": duplicate.double_counting(
             claimed_kwh, metered_kwh, (rec.period_start, rec.period_end), other_claims, fingerprint_matches
         ),
-        "anomaly": anomaly.assess(
-            _get_anomaly_model(), anomaly.build_features(plant.capacity_kw, sunny_kwh, sunny_irradiation)
-        ),
         "provenance": graph.analyse_chain(chain),
+        # "anomaly" is filled in separately by _anomaly_features - report §6's six features
+        # need cross-REC and plant-history queries this function doesn't have access to.
     }
+
+
+# How far around a REC's issuance date to count sibling RECs for the "issuance frequency"
+# feature (report §6: "issuance volume and frequency per plant").
+ISSUANCE_FREQUENCY_WINDOW_DAYS = 45
+
+
+def _anomaly_features(db: Session, rec: Rec, plant: Plant, readings: list[Generation], measurements: dict) -> list[float]:
+    """Report §6's six per-REC features, computed here since (unlike the other checks) they
+    need the plant's full generation history and its other RECs, not just this REC's period."""
+    claimed_kwh = rec.energy_mwh * 1000
+    period_days = (rec.period_end - rec.period_start).days + 1
+    period_hours = period_days * 24
+
+    claim_to_expected_ratio = duplicate.ratio(claimed_kwh, measurements["physics"]["expected_kwh"])
+    claim_to_meter_ratio = measurements["meter_match"]["claim_ratio"]
+    capacity_utilisation = round(claimed_kwh / (plant.capacity_kw * period_hours), 3) if plant.capacity_kw and period_hours else 0.0
+
+    # Seasonal deviation: this REC's own daily rate against the plant's own average for the
+    # same calendar month, across its full metered history (not just this REC's days).
+    all_readings = db.execute(select(Generation.day, Generation.energy_kwh).where(Generation.plant_id == plant.id)).all()
+    by_month = defaultdict(list)
+    for day, energy_kwh in all_readings:
+        by_month[day.month].append(energy_kwh)
+    month_avg = by_month.get(rec.period_start.month)
+    plant_month_avg = sum(month_avg) / len(month_avg) if month_avg else 0.0
+    this_avg = (sum(r.energy_kwh for r in readings) / len(readings)) if readings else (claimed_kwh / period_days)
+    seasonal_deviation = round(abs(this_avg - plant_month_avg) / plant_month_avg, 3) if plant_month_avg else 0.0
+
+    window = timedelta(days=ISSUANCE_FREQUENCY_WINDOW_DAYS)
+    issuance_frequency = db.scalar(
+        select(func.count()).select_from(Rec).where(
+            Rec.plant_id == plant.id, Rec.id != rec.id,
+            Rec.issued_at.between(rec.issued_at - window, rec.issued_at + window),
+        )
+    )
+    issuance_delay_days = max(0, (rec.issued_at.date() - rec.period_end).days)
+
+    return anomaly.build_features(
+        claim_to_expected_ratio, claim_to_meter_ratio, capacity_utilisation,
+        seasonal_deviation, issuance_frequency, issuance_delay_days,
+    )
 
 
 def _fill_missing_irradiation(plant: Plant, readings: list[Generation]) -> None:
@@ -243,7 +287,9 @@ def _duplicate_summary(m: dict) -> str:
 def _anomaly_summary(m: dict) -> str:
     if not m["available"]:
         return "Anomaly model not trained yet (run python -m ml.train_anomaly)."
-    return f"{m['anomalous_days']} of {m['days']} daily readings look unusual for a solar plant (Isolation Forest)."
+    if m["is_anomalous"]:
+        return f"This REC's claim, meter and issuance pattern is unusual for this plant (Isolation Forest score {m['anomaly_score']:.2f})."
+    return f"Normal claim, meter and issuance pattern for this plant (Isolation Forest score {m['anomaly_score']:.2f})."
 
 
 def _provenance_summary(m: dict) -> str:
