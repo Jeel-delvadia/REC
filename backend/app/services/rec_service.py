@@ -42,6 +42,8 @@ def search(
     band: str | None = None,
     min_score: int | None = None,
     status: str | None = None,
+    date_from=None,
+    date_to=None,
     limit: int = 50,
     offset: int = 0,
 ) -> dict:
@@ -55,6 +57,12 @@ def search(
         query = query.where(Rec.risk_score >= min_score)
     if status:
         query = query.where(Rec.status == status)
+    # Overlap with [date_from, date_to], not containment - a REC whose period only partially
+    # falls in the range still matches, the same way the dashboard's other filters are inclusive.
+    if date_from:
+        query = query.where(Rec.period_end >= date_from)
+    if date_to:
+        query = query.where(Rec.period_start <= date_to)
 
     total = db.scalar(select(func.count()).select_from(query.subquery()))
     recs = db.scalars(query.order_by(Rec.risk_score.desc().nulls_last(), Rec.id).limit(limit).offset(offset)).all()

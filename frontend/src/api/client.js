@@ -60,13 +60,15 @@ export async function createRec(data) {
   });
 }
 
-export async function fetchRecs({ search, band, min_score, status, limit = 50, offset = 0 } = {}) {
+export async function fetchRecs({ search, band, min_score, status, date_from, date_to, limit = 50, offset = 0 } = {}) {
   const params = new URLSearchParams();
   if (search) params.append('search', search);
   if (band) params.append('band', band);
   if (min_score !== undefined && min_score !== null && min_score !== '') params.append('min_score', min_score);
   if (status) params.append('status', status);
-  
+  if (date_from) params.append('date_from', date_from);
+  if (date_to) params.append('date_to', date_to);
+
   const safeLimit = Math.min(Math.max(1, limit), 200);
   params.append('limit', safeLimit);
   params.append('offset', offset);
