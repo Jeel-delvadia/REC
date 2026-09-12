@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, AlertTriangle, CheckCircle, UserX, ShieldCheck } from 'lucide-react';
+import { RefreshCw, AlertTriangle, CheckCircle, UserX } from 'lucide-react';
 import { fetchUsers, setUserRole, fetchPlants } from '../api/client';
 import { ROLES, ROLE_LABELS } from '../lib/permissions';
 import Card from '../components/ui/Card';
 import { LoadingState, EmptyState } from '../components/ui/States';
+import BrandShieldIcon from '../components/ui/BrandShieldIcon';
 
 // RS-21 (§9.5): registry_admin-only. The backend (require_role("registry_admin") on
 // GET/PATCH /admin/users) is the actual enforcement - this page just wouldn't be reachable
@@ -138,7 +139,7 @@ export default function AdminUsersPage() {
                             disabled={!dirty || savingId === u.id || (edit.role === 'plant_operator' && !edit.plant_id)}
                             className="btn btn-primary px-3 py-1.5 text-xs disabled:opacity-30 disabled:cursor-not-allowed"
                           >
-                            <ShieldCheck className="w-3.5 h-3.5" />
+                            <BrandShieldIcon className="w-3.5 h-3.5" />
                             {savingId === u.id ? 'Saving...' : 'Save'}
                           </button>
                         )}

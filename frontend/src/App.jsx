@@ -62,18 +62,9 @@ function AuditorGate({ children }) {
 // dev checkout with Supabase unconfigured, where there's no concept of "signed out" at all)
 // should land straight on their dashboard instead of the pitch they already converted from.
 function HomeRoute() {
-  const { enabled, loading, user } = useAuth();
-  if (!enabled) return <Navigate to="/dashboard" replace />;
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[var(--bg-app)] flex items-center justify-center text-[var(--text-secondary)] gap-3">
-        <RefreshCw className="w-6 h-6 animate-spin text-[var(--brand)]" />
-        <span className="text-sm">Checking session...</span>
-      </div>
-    );
-  }
-  return user ? <Navigate to="/dashboard" replace /> : <LandingPage />;
+  return <LandingPage />;
 }
+
 
 function AuditorPlatform() {
   return (
@@ -102,8 +93,10 @@ export default function App() {
           {/* Public standalone verification layout - no login, ever */}
           <Route path="/verify/:recId" element={<PublicVerifyPage />} />
 
-          {/* Public marketing landing page - redirects straight to /dashboard once signed in */}
+          {/* Public marketing landing page */}
           <Route path="/" element={<HomeRoute />} />
+          <Route path="/landing" element={<LandingPage />} />
+
 
           {/* Sign in / sign up - its own route now (previously rendered inline by AuditorGate) */}
           <Route path="/login" element={<LoginPage />} />

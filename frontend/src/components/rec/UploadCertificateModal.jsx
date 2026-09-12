@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { X, Upload, PlusCircle, Building, Calendar, Zap, User, FileText, CheckCircle, RefreshCw, AlertTriangle, ShieldCheck, FileSpreadsheet } from 'lucide-react';
+import { X, Upload, PlusCircle, Building, Calendar, Zap, User, FileText, CheckCircle, RefreshCw, AlertTriangle, FileSpreadsheet } from 'lucide-react';
 import { fetchPlants, createRec } from '../../api/client';
+import BrandShieldIcon from '../ui/BrandShieldIcon';
 
 export default function UploadCertificateModal({ onClose, onSuccess }) {
   const [activeTab, setActiveTab] = useState('form'); // 'form' | 'csv'
@@ -302,7 +303,7 @@ export default function UploadCertificateModal({ onClose, onSuccess }) {
                     </>
                   ) : (
                     <>
-                      <ShieldCheck className="w-4 h-4" />
+                      <BrandShieldIcon className="w-4 h-4" />
                       <span>Issue & verify</span>
                     </>
                   )}

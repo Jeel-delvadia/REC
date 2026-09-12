@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, AlertTriangle, RefreshCw, Hash } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Hash } from 'lucide-react';
 import { verifyLedgerIntegrity } from '../api/client';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import BrandShieldIcon from '../components/ui/BrandShieldIcon';
 
 export default function LedgerPage() {
   const [ledgerStatus, setLedgerStatus] = useState(null);
@@ -51,7 +52,7 @@ export default function LedgerPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className={`w-12 h-12 rounded-lg bg-[var(--surface-sunken)] border border-[var(--border)] flex items-center justify-center shrink-0 ${ledgerStatus?.valid ? 'text-[var(--risk-genuine)]' : 'text-[var(--risk-fraud)]'}`}>
-              {ledgerStatus?.valid ? <ShieldCheck className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}
+              {ledgerStatus?.valid ? <BrandShieldIcon className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}
             </div>
             <div>
               <h2 className="text-base font-semibold text-[var(--text-primary)]">

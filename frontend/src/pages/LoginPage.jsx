@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ShieldCheck, Mail, Lock, AlertTriangle, CheckCircle2, UserCog, Building2,
+  Mail, Lock, AlertTriangle, CheckCircle2, UserCog, Building2,
   ArrowLeft, Network, ScanSearch, FileCheck2,
 } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
 import { fetchPlants } from '../api/client';
 import { SELF_SERVICE_ROLES, ROLE_LABELS } from '../lib/permissions';
 import Button from '../components/ui/Button';
+import BrandShieldIcon from '../components/ui/BrandShieldIcon';
 
 const SIDE_POINTS = [
   { icon: ScanSearch, text: 'Five-check risk scoring on every certificate' },
@@ -81,8 +82,8 @@ export default function LoginPage() {
           style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '24px 24px' }}
         />
         <Link to="/" className="relative flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-lg bg-white/15 flex items-center justify-center">
-            <ShieldCheck className="w-5 h-5 text-white" />
+          <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center">
+            <BrandShieldIcon className="w-6 h-6" />
           </div>
           <span className="font-bold text-lg text-white tracking-tight">RECShield</span>
         </Link>
@@ -114,8 +115,8 @@ export default function LoginPage() {
       <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8">
         <div className="w-full max-w-sm">
           <Link to="/" className="lg:hidden flex items-center gap-2.5 mb-8 justify-center">
-            <div className="w-8 h-8 rounded-lg bg-[var(--brand)] flex items-center justify-center">
-              <ShieldCheck className="w-[18px] h-[18px] text-white" />
+            <div className="w-8 h-8 rounded-lg bg-white border border-[var(--border)] flex items-center justify-center">
+              <BrandShieldIcon className="w-[22px] h-[22px]" />
             </div>
             <span className="font-bold text-[15px] text-[var(--text-primary)] tracking-tight">RECShield</span>
           </Link>

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ShieldCheck, CheckCircle, AlertTriangle, Building, Zap, Calendar, User, ExternalLink, RefreshCw, Lock } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Building, Zap, Calendar, User, ExternalLink, RefreshCw, Lock } from 'lucide-react';
 import { fetchPublicVerification } from '../api/client';
+import BrandShieldIcon from '../components/ui/BrandShieldIcon';
 
 // Same band language as the auditor-facing badges (index.css's badge-*), so a public verifier
 // and an internal auditor read the same risk word as the same color - checklist item "risk
@@ -51,8 +52,8 @@ export default function PublicVerifyPage() {
 
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-[var(--brand)] mb-2">
-            <ShieldCheck className="w-8 h-8 text-white" />
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-white border border-[var(--border)] mb-2">
+            <BrandShieldIcon className="w-9 h-9" />
           </div>
           <h1 className="text-2xl font-bold text-[var(--text-primary)] tracking-tight">RECShield</h1>
           <p className="text-xs text-[var(--text-tertiary)]">Certificate verification</p>

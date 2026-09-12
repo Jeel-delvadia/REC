@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ShieldCheck, LayoutDashboard, FileCheck2, Network, Lock, RefreshCw,
+  LayoutDashboard, FileCheck2, Network, Lock, RefreshCw,
   ShoppingBag, ClipboardCheck, Users, ChevronLeft, X,
 } from 'lucide-react';
 import { useAuth } from '../../lib/AuthContext';
@@ -10,6 +10,7 @@ import {
   canIssueOrIngest, canManageUsers, canViewOversightTools,
   canBrowseMarketplace, canReviewPurchaseRequests,
 } from '../../lib/permissions';
+import BrandShieldIcon from '../ui/BrandShieldIcon';
 
 /**
  * The app shell's left sidebar. RS-25 (UI redesign): replaces the old two-row top Header nav.
@@ -90,8 +91,8 @@ export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onClo
       {/* Brand */}
       <div className={`h-16 flex items-center shrink-0 border-b border-[var(--border)] ${collapsed ? 'justify-center px-2' : 'px-5 justify-between'}`}>
         <Link to="/dashboard" className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-[var(--brand)] flex items-center justify-center shrink-0">
-            <ShieldCheck className="w-[18px] h-[18px] text-white" />
+          <div className="w-8 h-8 rounded-lg bg-white border border-[var(--border)] flex items-center justify-center shrink-0">
+            <BrandShieldIcon className="w-[22px] h-[22px]" />
           </div>
           {!collapsed && <span className="font-bold text-[15px] text-[var(--text-primary)] tracking-tight truncate">RECShield</span>}
         </Link>

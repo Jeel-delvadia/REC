@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import {
-  X, Shield, CheckCircle, AlertTriangle, AlertCircle, Sparkles,
+  X, CheckCircle, AlertTriangle, AlertCircle, Sparkles,
   RotateCw, Flag, Check, ChevronDown, ChevronUp, FileText, QrCode,
   ExternalLink, Lock, History, User, Building, Calendar, Zap, Activity, Download
 } from 'lucide-react';
@@ -11,6 +11,7 @@ import { useAuth } from '../../lib/AuthContext';
 import { canTakeAuditActions, canViewOversightTools } from '../../lib/permissions';
 import { Link } from 'react-router-dom';
 import RiskBadge from '../ui/RiskBadge';
+import BrandShieldIcon from '../ui/BrandShieldIcon';
 
 export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
   // RS-16: once Supabase Auth is configured, the signed-in email is who acted - no free-text
@@ -174,7 +175,7 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-[var(--surface-sunken)] border border-[var(--border)] text-[var(--brand)] flex items-center justify-center shrink-0">
-              <Shield className="w-5 h-5" />
+              <BrandShieldIcon className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-3 flex-wrap">

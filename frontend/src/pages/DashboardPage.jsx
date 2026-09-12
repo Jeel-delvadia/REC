@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  ShieldAlert, ShieldCheck, Database, CheckCircle2, AlertCircle, Inbox, Lock, AlertTriangle,
+  ShieldAlert, Database, CheckCircle2, AlertCircle, Inbox, Lock, AlertTriangle,
   RefreshCw, ChevronRight,
 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
@@ -13,6 +13,7 @@ import ChartCard from '../components/ui/ChartCard';
 import RiskBadge from '../components/ui/RiskBadge';
 import Button from '../components/ui/Button';
 import DataTable from '../components/ui/DataTable';
+import BrandShieldIcon from '../components/ui/BrandShieldIcon';
 import { LoadingState, ErrorState, EmptyState } from '../components/ui/States';
 
 // Report §6 band colors - mirrors index.css's --risk-* tokens (CSS vars can't be read by
@@ -210,7 +211,7 @@ export default function DashboardPage() {
           className="lg:col-span-2"
         >
           {highRiskList.length === 0 ? (
-            <EmptyState icon={ShieldCheck} description="Nothing above the review threshold right now." />
+            <EmptyState icon={BrandShieldIcon} description="Nothing above the review threshold right now." />
           ) : (
             <DataTable columns={queueColumns} rows={highRiskList} />
           )}
