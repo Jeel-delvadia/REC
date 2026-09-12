@@ -125,7 +125,19 @@ def load_csv_data(db: Session, *, reset: bool = True, verify: bool = True, direc
         Transaction(rec_id=row.rec_id, from_party=row.from_party, to_party=row.to_party, timestamp=row.timestamp, kind=row.kind)
         for row in transaction_rows
     ]
-    db.add_all(plants + meters + generation + recs + transactions)
+    # Flushed in FK-dependency order, not one big add_all(). None of Generation/Meter/Rec/
+    # Transaction have an ORM relationship() back to their parent - just a raw FK column - so
+    # SQLAlchemy's unit-of-work has no dependency edge to sort these inserts by, and picks
+    # whatever order it likes. SQLite never enforces FK constraints, so a wrong order was
+    # silently harmless there; Postgres (Supabase) does enforce them, and errors on it -
+    # confirmed live against a real Supabase project, not just reasoned about.
+    db.add_all(plants)
+    db.flush()
+    db.add_all(meters)
+    db.flush()
+    db.add_all(generation + recs)
+    db.flush()
+    db.add_all(transactions)
     db.flush()
 
     # Record issuance and every transfer on the ledger, oldest first.
