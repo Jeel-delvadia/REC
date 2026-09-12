@@ -6,15 +6,20 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { fetchRecDetail, verifyRec, submitAuditAction, fetchRecReport } from '../../api/client';
+import { useAuth } from '../../lib/AuthContext';
 import { Link } from 'react-router-dom';
 
 export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
+  // RS-16: once Supabase Auth is configured, the signed-in email is who acted - no free-text
+  // name to spoof. Before that (authEnabled === false), fall back to the old manual field so
+  // the app still works without Supabase wired up.
+  const { enabled: authEnabled, user } = useAuth();
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState(null);
-  
-  // Auditor Action Form state
+
+  // Auditor Action Form state (auditorName only used when authEnabled is false)
   const [auditorName, setAuditorName] = useState('Senior Auditor');
   const [actionNote, setActionNote] = useState('');
   const [submittingAction, setSubmittingAction] = useState(null); // holds the action in flight
@@ -71,7 +76,11 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
   };
 
   const handleAuditSubmit = async (actionType) => {
-    if (!auditorName.trim()) {
+    if (authEnabled && !user) {
+      setActionError('Your session has expired - please sign in again.');
+      return;
+    }
+    if (!authEnabled && !auditorName.trim()) {
       setActionError('Enter an auditor name first.');
       return;
     }
@@ -83,7 +92,9 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
       setSubmittingAction(actionType);
       setActionError('');
       setActionSuccessMsg('');
-      await submitAuditAction(recId, { action: actionType, auditor: auditorName, note: actionNote || null });
+      // The backend derives the auditor from the session token (attached by api/client.js)
+      // whenever authEnabled - `auditor` here is only read as a fallback when it's not.
+      await submitAuditAction(recId, { action: actionType, auditor: authEnabled ? undefined : auditorName, note: actionNote || null });
       setActionSuccessMsg(`Recorded: ${ACTION_LABELS[actionType]}`);
       setActionNote('');
       await loadDetail();
@@ -352,14 +363,21 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
                 )}
 
                 <div className="mb-3">
-                  <label className="block text-[11px] text-slate-400 font-medium mb-1">Auditor Name</label>
-                  <input
-                    type="text"
-                    value={auditorName}
-                    onChange={(e) => setAuditorName(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-800 focus:border-sky-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none"
-                    placeholder="Enter name"
-                  />
+                  <label className="block text-[11px] text-slate-400 font-medium mb-1">Auditor</label>
+                  {authEnabled ? (
+                    <div className="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-300 font-mono flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-sky-400" />
+                      {user?.email || 'not signed in'}
+                    </div>
+                  ) : (
+                    <input
+                      type="text"
+                      value={auditorName}
+                      onChange={(e) => setAuditorName(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 focus:border-sky-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none"
+                      placeholder="Enter name"
+                    />
+                  )}
                 </div>
 
                 <div className="mb-3">

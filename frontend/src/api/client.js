@@ -1,10 +1,24 @@
+import { supabase, supabaseEnabled } from '../lib/supabaseClient';
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+
+async function authHeader() {
+  // RS-16: attaches the auditor's Supabase session token so the backend's get_current_auditor
+  // can verify it. Harmless to send on GET requests too - the backend only checks it on the
+  // auditor-only write routes. Silently omitted when Supabase isn't configured or there's no
+  // session yet (backend then falls back to its own local-dev identity).
+  if (!supabaseEnabled) return {};
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 async function request(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;
   const config = {
     headers: {
       'Content-Type': 'application/json',
+      ...(await authHeader()),
       ...options.headers,
     },
     ...options,

@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Shield, LayoutDashboard, Database, Network, Lock, Search, RefreshCw, CheckCircle, AlertTriangle, PlusCircle } from 'lucide-react';
+import { Shield, LayoutDashboard, Database, Network, Lock, Search, RefreshCw, CheckCircle, AlertTriangle, PlusCircle, LogOut, UserCircle } from 'lucide-react';
 import { verifyLedgerIntegrity } from '../../api/client';
+import { useAuth } from '../../lib/AuthContext';
 import UploadCertificateModal from '../rec/UploadCertificateModal';
 import RecDetailModal from '../rec/RecDetailModal';
 
 export default function Header() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { enabled: authEnabled, user, signOut } = useAuth();
   const [searchInput, setSearchInput] = useState('');
   const [ledgerValid, setLedgerValid] = useState(null);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -119,6 +121,23 @@ export default function Header() {
             );
           })}
         </nav>
+
+        {/* Signed-in auditor (RS-16) - only shown once Supabase Auth is configured */}
+        {authEnabled && user && (
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="hidden md:flex items-center gap-1.5 text-xs text-slate-400 font-mono">
+              <UserCircle className="w-3.5 h-3.5 text-sky-400" /> {user.email}
+            </span>
+            <button
+              onClick={() => signOut()}
+              title="Sign out"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 text-xs font-semibold transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Sign Out</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Upload Certificate Modal */}
