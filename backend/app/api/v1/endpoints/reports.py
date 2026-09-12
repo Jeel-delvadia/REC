@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -6,11 +6,6 @@ from app.schemas.report import PublicVerification, ReportOut
 from app.services import report_service
 
 router = APIRouter(tags=["reports"])
-
-
-@router.get("/recs/{rec_id}/qr", response_class=Response)
-def get_qr(rec_id: str, db: Session = Depends(get_db)):
-    return Response(content=report_service.qr_svg(db, rec_id), media_type="image/svg+xml")
 
 
 @router.get("/public/verify/{rec_id}", response_model=PublicVerification)

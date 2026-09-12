@@ -4,7 +4,8 @@ import {
   RotateCw, Flag, Check, ChevronDown, ChevronUp, FileText, QrCode, 
   ExternalLink, Lock, History, User, Building, Calendar, Zap, Activity
 } from 'lucide-react';
-import { fetchRecDetail, verifyRec, submitAuditAction, fetchRecQrSvg } from '../../api/client';
+import { QRCodeSVG } from 'qrcode.react';
+import { fetchRecDetail, verifyRec, submitAuditAction } from '../../api/client';
 import { Link } from 'react-router-dom';
 
 export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
@@ -22,8 +23,10 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
 
   // Expandable state
   const [expandedCheck, setExpandedCheck] = useState(null);
-  const [qrSvg, setQrSvg] = useState(null);
   const [showQrModal, setShowQrModal] = useState(false);
+  // RS-14: rendered client-side with qrcode.react - the frontend already knows its own origin,
+  // so the QR just points at the public verify route it serves itself. No backend call needed.
+  const publicUrl = recId ? `${window.location.origin}/verify/${recId}` : '';
 
   useEffect(() => {
     if (recId) {
@@ -88,16 +91,6 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
       setActionError(err.message || `Failed to submit ${actionType}`);
     } finally {
       setSubmittingAction(null);
-    }
-  };
-
-  const loadQr = async () => {
-    try {
-      const svg = await fetchRecQrSvg(recId);
-      setQrSvg(svg);
-      setShowQrModal(true);
-    } catch (err) {
-      alert('Could not fetch QR code: ' + err.message);
     }
   };
 
@@ -219,7 +212,7 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
 
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={loadQr}
+                    onClick={() => setShowQrModal(true)}
                     className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors"
                   >
                     <QrCode className="w-3.5 h-3.5 text-cyan-400" />
@@ -424,11 +417,16 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-sm w-full text-center space-y-4">
             <h3 className="text-lg font-bold text-white font-mono">{recId} QR Verification</h3>
             <p className="text-xs text-slate-400">Scan this code with a mobile camera to view public verification proof.</p>
-            {qrSvg && (
-              <div 
-                className="w-48 h-48 mx-auto bg-white p-3 rounded-xl shadow-inner flex items-center justify-center"
-                dangerouslySetInnerHTML={{ __html: qrSvg }}
-              />
+            <div className="w-48 h-48 mx-auto bg-white p-3 rounded-xl shadow-inner flex items-center justify-center">
+              <QRCodeSVG value={publicUrl} size={168} bgColor="#ffffff" fgColor="#0f172a" level="M" />
+            </div>
+            <p className="text-[10px] text-slate-500 font-mono break-all">{publicUrl}</p>
+            {window.location.hostname === 'localhost' && (
+              <p className="text-[10px] text-amber-400">
+                This points at localhost - a phone on another network can't reach it. Serve the
+                frontend with <code className="font-mono">vite --host</code> and open this page
+                via your machine's LAN IP instead.
+              </p>
             )}
             <button
               onClick={() => setShowQrModal(false)}

@@ -91,10 +91,6 @@ export async function submitAuditAction(recId, { action, auditor, note }) {
   });
 }
 
-export async function fetchRecQrSvg(recId) {
-  return request(`/recs/${encodeURIComponent(recId)}/qr`);
-}
-
 export async function fetchRecReport(recId) {
   return request(`/recs/${encodeURIComponent(recId)}/report`);
 }

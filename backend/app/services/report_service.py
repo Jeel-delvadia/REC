@@ -1,8 +1,9 @@
-"""QR codes, the public verification view, and the downloadable audit report."""
-import io
+"""The public verification view and the downloadable audit report.
 
-import qrcode
-from qrcode.image.svg import SvgPathImage
+QR rendering moved client-side (RS-14, qrcode.react) - it only ever encoded public_url()
+below, which the frontend already gets from these two responses, so there's nothing server-side
+left to generate. public_url() stays here: both public_verification() and build_report() return it.
+"""
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -12,14 +13,6 @@ from app.services import audit_service, rec_service
 
 def public_url(rec_id: str) -> str:
     return f"{settings.PUBLIC_BASE_URL.rstrip('/')}/verify/{rec_id}"
-
-
-def qr_svg(db: Session, rec_id: str) -> bytes:
-    rec_service.get_rec(db, rec_id)  # 404 rather than a QR code for a REC that doesn't exist
-    image = qrcode.make(public_url(rec_id), image_factory=SvgPathImage, box_size=10, border=2)
-    buffer = io.BytesIO()
-    image.save(buffer)
-    return buffer.getvalue()
 
 
 def public_verification(db: Session, rec_id: str) -> dict:
