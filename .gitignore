@@ -13,6 +13,12 @@ __pycache__/
 venv/
 .pytest_cache/
 
+# never commit a zipped venv/node_modules - not portable between machines (hardcoded paths,
+# OS/CPU-specific compiled binaries) and bloats the repo for nothing. See README's portability
+# note. If a real zip asset is ever needed here, be explicit about that one path instead of
+# widening this pattern.
+*.zip
+
 # local databases (regenerate with: python -m scripts.seed_data)
 *.db
 *.db-journal
