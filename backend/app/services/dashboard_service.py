@@ -3,23 +3,28 @@ from sqlalchemy.orm import Session
 
 from app.models import Rec
 from app.services import alert_service
-from app.services.rec_service import summarize
+from app.services.rec_service import summarize, visible_to_clause
 from app.services.risk_service import HIGH_RISK_BANDS
 
 HIGH_RISK_LIST_SIZE = 10
 
 
-def summary(db: Session) -> dict:
-    total_recs, total_mwh = db.execute(
-        select(func.count(Rec.id), func.coalesce(func.sum(Rec.energy_mwh), 0.0))
-    ).one()
+def summary(db: Session, viewer=None) -> dict:
+    # RS-21 (§9.5): a plant_operator's or buyer's dashboard only ever reflects their own
+    # plant/held RECs - reuses rec_service's own scoping rule so "who sees what" stays defined
+    # in exactly one place rather than drifting between the REC list and the dashboard.
+    scope = visible_to_clause(viewer) or ()
 
     def count(*conditions) -> int:
-        return db.scalar(select(func.count()).select_from(Rec).where(*conditions))
+        return db.scalar(select(func.count()).select_from(Rec).where(*scope, *conditions))
+
+    total_recs, total_mwh = db.execute(
+        select(func.count(Rec.id), func.coalesce(func.sum(Rec.energy_mwh), 0.0)).where(*scope)
+    ).one()
 
     high_risk = db.scalars(
         select(Rec)
-        .where(Rec.risk_band.in_(HIGH_RISK_BANDS))
+        .where(*scope, Rec.risk_band.in_(HIGH_RISK_BANDS))
         .order_by(Rec.risk_score.desc(), Rec.id)
         .limit(HIGH_RISK_LIST_SIZE)
     ).all()

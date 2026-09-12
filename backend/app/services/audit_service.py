@@ -9,9 +9,8 @@ from sqlalchemy.orm import Session
 
 from app.core.database import utcnow
 from app.engines import ledger
-from app.models import AuditAction, LedgerEntry, VerificationResult
-from app.services import alert_service
-from app.services.rec_service import get_rec
+from app.models import AuditAction, LedgerEntry, Rec, VerificationResult
+from app.services import NotFoundError, alert_service
 
 # New REC status for each action that changes status. request_verification and note leave
 # a REC's ledger event type as AUDITOR_ACTION either way - see record_action.
@@ -36,8 +35,20 @@ def append_ledger(db: Session, event_type: str, rec_id: str | None, payload: dic
     return entry
 
 
+def _get_rec(db: Session, rec_id: str) -> Rec:
+    # Duplicated from rec_service.get_rec (not imported) - rec_service imports this module at
+    # module level (create_rec's ledger call), so importing rec_service back here would be a
+    # circular import. It only surfaces depending on which module gets imported first, so it's
+    # easy to miss until something imports audit_service/rec_service in the "wrong" order -
+    # confirmed live: this lookup, not this fix, is where it showed up.
+    rec = db.get(Rec, rec_id)
+    if rec is None:
+        raise NotFoundError(f"REC {rec_id} not found")
+    return rec
+
+
 def record_action(db: Session, rec_id: str, action: str, auditor: str, note: str | None) -> dict:
-    rec = get_rec(db, rec_id)
+    rec = _get_rec(db, rec_id)
     audit = AuditAction(rec_id=rec.id, action=action, auditor=auditor, note=note, created_at=utcnow())
     db.add(audit)
     if action in ACTION_STATUS:
@@ -66,7 +77,7 @@ def record_action(db: Session, rec_id: str, action: str, auditor: str, note: str
 
 
 def history(db: Session, rec_id: str) -> list[LedgerEntry]:
-    get_rec(db, rec_id)
+    _get_rec(db, rec_id)
     return list(db.scalars(select(LedgerEntry).where(LedgerEntry.rec_id == rec_id).order_by(LedgerEntry.id)).all())
 
 

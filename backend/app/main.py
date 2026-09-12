@@ -18,9 +18,18 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="RECShield API", lifespan=lifespan)
 
+# Vite bumps to 5174/5175/... whenever 5173 is taken, and the QR/phone-verification demo
+# (RS-14/RS-17) needs the frontend reachable from a phone on the same LAN, at whatever IP that
+# happens to be - rather than hand-editing CORS_ORIGINS every time either changes, also allow
+# any localhost/127.0.0.1 port and any private LAN IP (RFC 1918: 10.x, 172.16-31.x, 192.168.x)
+# on any port. Deliberately not a public-internet wildcard - a real deployment (RS-17) should
+# set CORS_ORIGINS to its actual frontend origin instead of relying on this regex.
+_LOCAL_DEV_ORIGIN_REGEX = r"^http://(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+):\d+$"
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,  # Vite dev server runs on 5173
+    allow_origins=settings.CORS_ORIGINS,
+    allow_origin_regex=_LOCAL_DEV_ORIGIN_REGEX,
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -11,5 +11,7 @@ pvlib>=0.11
 joblib>=1.4
 networkx>=3.3
 reportlab>=4.2
+pyjwt>=2.9
+cryptography>=43
 anthropic
 pytest>=8

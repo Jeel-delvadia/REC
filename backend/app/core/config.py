@@ -18,8 +18,24 @@ class Settings(BaseSettings):
     # Where QR codes point: the frontend's public verification page.
     PUBLIC_BASE_URL: str = "http://localhost:5173"
 
+    # RS-16: Supabase Auth. Either is enough to turn on verification - both empty (the
+    # default) falls back to an unauthenticated "local-dev" identity, so pytest and a plain
+    # local run keep working without Supabase configured.
+    # - SUPABASE_JWT_SECRET: legacy HS256 shared secret (Project Settings -> API -> JWT
+    #   Settings -> "Legacy JWT Secret"). Fast - no network call - but newer projects using
+    #   Supabase's asymmetric signing keys may not expose one.
+    # - SUPABASE_URL: same Project URL as the frontend's VITE_SUPABASE_URL. When set (and no
+    #   JWT secret), tokens are verified against the project's public JWKS instead - works on
+    #   every project regardless of which signing key type it uses, at the cost of a
+    #   (cached) network fetch for the signing keys.
+    SUPABASE_JWT_SECRET: str = ""
+    SUPABASE_URL: str = ""
+
     DATA_DIR: Path = BACKEND_DIR / "data" / "simulated"
     ANOMALY_MODEL_PATH: Path = BACKEND_DIR / "ml" / "artifacts" / "isolation_forest.joblib"
+
+    # RS-19: default REC certificate metadata when a caller doesn't supply it.
+    DEFAULT_ISSUING_AUTHORITY: str = "Central Electricity Regulatory Commission (CERC)"
 
 
 settings = Settings()

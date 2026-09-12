@@ -1,6 +1,63 @@
-import React, { useState } from 'react';
-import { RefreshCw, Database, CheckCircle, AlertTriangle, Play, ShieldAlert, Cpu } from 'lucide-react';
-import { triggerDataIngest } from '../api/client';
+import React, { useState, useEffect } from 'react';
+import { RefreshCw, CheckCircle, AlertTriangle, Play, ClipboardCheck, ChevronDown, ChevronUp, Info, AlertCircle } from 'lucide-react';
+import { triggerDataIngest, fetchLatestDataQualityReport } from '../api/client';
+import Card from '../components/ui/Card';
+
+// RS-20 (§9.6): a data-quality score is "how much can I trust this batch," not "how likely
+// is this fraud" - a different axis from the risk bands, so it gets its own label set even
+// though it reuses the same badge color language (badge-genuine/suspicious/high_risk/
+// likely_fraud from index.css) for visual consistency with the rest of the dashboard.
+function dqBand(score) {
+  if (score >= 90) return { label: 'Excellent', cls: 'badge-genuine' };
+  if (score >= 75) return { label: 'Good', cls: 'badge-genuine' };
+  if (score >= 50) return { label: 'Needs review', cls: 'badge-suspicious' };
+  if (score >= 25) return { label: 'Poor', cls: 'badge-high_risk' };
+  return { label: 'Critical', cls: 'badge-likely_fraud' };
+}
+
+const SEVERITY_ICON = { fail: AlertTriangle, warn: AlertCircle, info: Info };
+const SEVERITY_COLOR = { fail: 'text-[var(--risk-fraud)]', warn: 'text-[var(--risk-suspicious)]', info: 'text-[var(--text-tertiary)]' };
+
+function DataQualityCard({ report }) {
+  const [expanded, setExpanded] = useState(true);
+  if (!report) return null;
+  const band = dqBand(report.score);
+  return (
+    <Card padding="p-5" className="space-y-3">
+      <button className="w-full flex items-center justify-between text-left" onClick={() => setExpanded((e) => !e)}>
+        <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2">
+          <ClipboardCheck className="w-4 h-4 text-[var(--text-tertiary)]" /> Data quality
+        </h3>
+        <div className="flex items-center gap-3">
+          <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase ${band.cls}`}>
+            {report.score}/100 &middot; {band.label}
+          </span>
+          {expanded ? <ChevronUp className="w-4 h-4 text-[var(--text-tertiary)]" /> : <ChevronDown className="w-4 h-4 text-[var(--text-tertiary)]" />}
+        </div>
+      </button>
+      {expanded && (
+        report.issues.length === 0 ? (
+          <p className="text-xs text-[var(--text-tertiary)]">No issues in the last ingest &mdash; no duplicate IDs, no dangling references, no statistical outliers, complete fields, fresh data.</p>
+        ) : (
+          <div className="space-y-1.5">
+            {report.issues.map((issue, i) => {
+              const Icon = SEVERITY_ICON[issue.severity] || Info;
+              return (
+                <div key={i} className="flex items-start gap-2.5 p-2.5 rounded-lg bg-[var(--surface-sunken)] border border-[var(--border)] text-xs">
+                  <Icon className={`w-4 h-4 shrink-0 mt-0.5 ${SEVERITY_COLOR[issue.severity]}`} />
+                  <div>
+                    <span className="font-mono text-[10px] text-[var(--text-tertiary)] uppercase">{issue.file} &middot; {issue.rule}</span>
+                    <p className="text-[var(--text-secondary)]">{issue.message}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )
+      )}
+    </Card>
+  );
+}
 
 export default function IngestPage() {
   const [reset, setReset] = useState(true);
@@ -8,6 +65,13 @@ export default function IngestPage() {
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [dqReport, setDqReport] = useState(null);
+
+  useEffect(() => {
+    // Show the last ingest's report even before anyone clicks the button again this session -
+    // a fresh page load shouldn't hide data quality history that already exists.
+    fetchLatestDataQualityReport().then(setDqReport).catch(() => {});
+  }, []);
 
   const handleIngest = async () => {
     try {
@@ -16,6 +80,7 @@ export default function IngestPage() {
       setResult(null);
       const res = await triggerDataIngest(reset, verify);
       setResult(res);
+      setDqReport(res.data_quality || null);
     } catch (err) {
       setError(err.message || 'Data ingestion failed');
     } finally {
@@ -24,94 +89,84 @@ export default function IngestPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
-      
-      {/* Title Header */}
+    <div className="max-w-3xl mx-auto space-y-6">
+
       <div>
-        <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-3">
-          <RefreshCw className="w-6 h-6 text-sky-400" />
-          <span>Data Management & Telemetry Ingestion Hub</span>
-        </h1>
-        <p className="text-xs text-slate-400 mt-1">
-          Seed simulated solar generation telemetry, train isolation forest anomaly models, and trigger verification audits.
+        <h1 className="text-xl font-bold text-[var(--text-primary)] tracking-tight">Data Hub</h1>
+        <p className="text-sm text-[var(--text-secondary)] mt-1">
+          Seed simulated telemetry and run verification across the full dataset.
         </p>
       </div>
 
       {/* Control Card */}
-      <div className="glass-panel p-6 space-y-6">
-        <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
-          <Database className="w-4 h-4 text-amber-400" /> Demo Dataset Seeding Controller
-        </h2>
-
-        <div className="space-y-4">
-          <label className="flex items-center gap-3 cursor-pointer">
+      <Card padding="p-6" className="space-y-5">
+        <div className="space-y-3">
+          <label className="flex items-start gap-3 cursor-pointer">
             <input
               type="checkbox"
               checked={reset}
               onChange={(e) => setReset(e.target.checked)}
-              className="w-4 h-4 rounded bg-slate-900 border-slate-700 text-sky-500 focus:ring-sky-500"
+              className="w-4 h-4 mt-0.5 rounded border-[var(--border-strong)] text-[var(--brand)] focus:ring-[var(--brand)]"
             />
             <div>
-              <span className="text-xs font-bold text-slate-200 block">Reset & Wipe Database Tables</span>
-              <span className="text-[11px] text-slate-400">Clears current SQLite tables and re-seeds from CSV simulated telemetry data.</span>
+              <span className="text-sm font-medium text-[var(--text-primary)] block">Reset before loading</span>
+              <span className="text-xs text-[var(--text-secondary)]">Clears existing tables and re-seeds from the simulated telemetry CSVs.</span>
             </div>
           </label>
 
-          <label className="flex items-center gap-3 cursor-pointer">
+          <label className="flex items-start gap-3 cursor-pointer">
             <input
               type="checkbox"
               checked={verify}
               onChange={(e) => setVerify(e.target.checked)}
-              className="w-4 h-4 rounded bg-slate-900 border-slate-700 text-sky-500 focus:ring-sky-500"
+              className="w-4 h-4 mt-0.5 rounded border-[var(--border-strong)] text-[var(--brand)] focus:ring-[var(--brand)]"
             />
             <div>
-              <span className="text-xs font-bold text-slate-200 block">Automated AI Batch Verification</span>
-              <span className="text-[11px] text-slate-400">Automatically executes physics, double counting, anomaly, and provenance checks for every REC.</span>
+              <span className="text-sm font-medium text-[var(--text-primary)] block">Verify after loading</span>
+              <span className="text-xs text-[var(--text-secondary)]">Runs physics, meter, duplicate, anomaly and provenance checks on every REC.</span>
             </div>
           </label>
         </div>
 
-        <button
-          onClick={handleIngest}
-          disabled={running}
-          className="w-full py-3 rounded-xl bg-gradient-to-r from-sky-500 to-cyan-500 hover:from-sky-400 hover:to-cyan-400 text-slate-950 font-extrabold text-xs transition-all shadow-lg shadow-sky-500/20 flex items-center justify-center gap-2 disabled:opacity-50"
-        >
+        <button onClick={handleIngest} disabled={running} className="w-full btn btn-primary py-2.5 text-sm justify-center disabled:opacity-50">
           {running ? (
             <>
               <RefreshCw className="w-4 h-4 animate-spin" />
-              <span>Ingesting CSV Data & Running AI Verification Suite...</span>
+              <span>Ingesting&hellip;</span>
             </>
           ) : (
             <>
               <Play className="w-4 h-4 fill-current" />
-              <span>Trigger Data Ingestion & Audit Pipeline</span>
+              <span>Run ingestion</span>
             </>
           )}
         </button>
 
         {/* Results Box */}
         {result && (
-          <div className="p-4 rounded-xl bg-emerald-950/30 border border-emerald-500/30 space-y-2 text-xs">
-            <div className="flex items-center gap-2 text-emerald-400 font-bold">
-              <CheckCircle className="w-4 h-4" /> Data Ingestion Completed Successfully!
+          <div className="p-4 rounded-xl badge-genuine space-y-2.5 text-xs">
+            <div className="flex items-center gap-2 font-semibold">
+              <CheckCircle className="w-4 h-4" /> Ingestion complete
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 font-mono pt-2 text-slate-200">
-              <div>Plants: <span className="text-sky-400 font-bold">{result.plants}</span></div>
-              <div>Meter Days: <span className="text-sky-400 font-bold">{result.generation}</span></div>
-              <div>RECs: <span className="text-amber-400 font-bold">{result.recs}</span></div>
-              <div>Transfers: <span className="text-purple-400 font-bold">{result.transactions}</span></div>
-              <div>Verified: <span className="text-emerald-400 font-bold">{result.verified}</span></div>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 font-mono pt-1">
+              <div>Plants <span className="block text-sm font-semibold tabular-nums">{result.plants}</span></div>
+              <div>Meter days <span className="block text-sm font-semibold tabular-nums">{result.generation}</span></div>
+              <div>RECs <span className="block text-sm font-semibold tabular-nums">{result.recs}</span></div>
+              <div>Transfers <span className="block text-sm font-semibold tabular-nums">{result.transactions}</span></div>
+              <div>Verified <span className="block text-sm font-semibold tabular-nums">{result.verified}</span></div>
             </div>
           </div>
         )}
 
         {error && (
-          <div className="p-4 rounded-xl bg-rose-950/30 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+          <div className="p-4 rounded-xl badge-likely_fraud text-xs flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
         )}
-      </div>
+      </Card>
+
+      <DataQualityCard report={dqReport} />
     </div>
   );
 }

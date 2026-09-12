@@ -4,12 +4,17 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>RECShield | AI-Powered REC Fraud Detection & Verification</title>
+    <title>RECShield | REC Fraud Detection & Verification</title>
+    <!-- Inter/JetBrains Mono are loaded via index.css's own @import, not here - this used to
+         also load "Plus Jakarta Sans" directly, a leftover from before the UI refinement pass
+         switched the whole app to Inter. Two competing font-family declarations on <body>
+         (this file's own `font-sans` utility class vs index.css's `body { font-family }`)
+         is exactly the kind of thing worth cleaning up in an audit like this one, even though
+         it wasn't the cause of the layout issue that prompted looking here. -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   </head>
-  <body class="bg-slate-950 text-slate-100 antialiased font-sans">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

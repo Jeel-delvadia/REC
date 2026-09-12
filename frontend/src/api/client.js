@@ -1,10 +1,24 @@
+import { supabase, supabaseEnabled } from '../lib/supabaseClient';
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+
+async function authHeader() {
+  // RS-16: attaches the auditor's Supabase session token so the backend's get_current_auditor
+  // can verify it. Harmless to send on GET requests too - the backend only checks it on the
+  // auditor-only write routes. Silently omitted when Supabase isn't configured or there's no
+  // session yet (backend then falls back to its own local-dev identity).
+  if (!supabaseEnabled) return {};
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 async function request(endpoint, options = {}) {
   const url = `${API_BASE}${endpoint}`;
   const config = {
     headers: {
       'Content-Type': 'application/json',
+      ...(await authHeader()),
       ...options.headers,
     },
     ...options,
@@ -56,6 +70,13 @@ export async function fetchPlants() {
   return request('/recs/plants');
 }
 
+export async function createPlant(data) {
+  return request('/recs/plants', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
 export async function createRec(data) {
   return request('/recs', {
     method: 'POST',
@@ -86,6 +107,15 @@ export async function fetchRecDetail(recId) {
 export async function verifyRec(recId) {
   return request(`/recs/${encodeURIComponent(recId)}/verify`, {
     method: 'POST',
+  });
+}
+
+// RS-23: links a REC to a buyer's own account (by email) so it appears in that buyer's
+// scoped dashboard/REC Explorer - separate from the free-text `holder` display name.
+export async function assignBuyer(recId, buyerEmail) {
+  return request(`/recs/${encodeURIComponent(recId)}/buyer`, {
+    method: 'POST',
+    body: JSON.stringify({ buyer_email: buyerEmail }),
   });
 }
 
@@ -126,5 +156,56 @@ export async function triggerDataIngest(reset = true, verify = true) {
   return request('/ingest', {
     method: 'POST',
     body: JSON.stringify({ reset, verify }),
+  });
+}
+
+export async function fetchLatestDataQualityReport() {
+  return request('/ingest/data-quality/latest');
+}
+
+// RS-24: buyer-initiated REC acquisition, gated behind auditor/admin approval.
+export async function fetchMarketplace() {
+  return request('/marketplace');
+}
+
+export async function requestPurchase(recId, note) {
+  return request(`/recs/${encodeURIComponent(recId)}/purchase-requests`, {
+    method: 'POST',
+    body: JSON.stringify({ note: note || null }),
+  });
+}
+
+export async function fetchPurchaseRequests(status) {
+  const params = status ? `?status=${encodeURIComponent(status)}` : '';
+  return request(`/purchase-requests${params}`);
+}
+
+export async function approvePurchaseRequest(requestId, note) {
+  return request(`/purchase-requests/${requestId}/approve`, {
+    method: 'POST',
+    body: JSON.stringify({ note: note || null }),
+  });
+}
+
+export async function rejectPurchaseRequest(requestId, note) {
+  return request(`/purchase-requests/${requestId}/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ note: note || null }),
+  });
+}
+
+// RS-21 (§9.5): role-based access control.
+export async function fetchMe() {
+  return request('/auth/me');
+}
+
+export async function fetchUsers() {
+  return request('/admin/users');
+}
+
+export async function setUserRole(userId, role, plantId = null) {
+  return request(`/admin/users/${encodeURIComponent(userId)}/role`, {
+    method: 'PATCH',
+    body: JSON.stringify({ role, plant_id: plantId }),
   });
 }

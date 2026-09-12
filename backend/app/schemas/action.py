@@ -7,7 +7,9 @@ from app.schemas.common import ActionType, ORMModel, RecStatus
 
 class ActionCreate(BaseModel):
     action: ActionType
-    auditor: str = Field(min_length=1, max_length=120)
+    # RS-16: who did this now comes from the auditor's signed-in session (Auditor.email), not
+    # this field - kept optional only so an older frontend build or a pre-auth demo still parses.
+    auditor: str | None = Field(default=None, max_length=120)
     note: str | None = Field(default=None, max_length=2000)
 
     @model_validator(mode="after")
