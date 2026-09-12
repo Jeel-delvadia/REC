@@ -28,6 +28,9 @@ async function request(endpoint, options = {}) {
     if (contentType && contentType.includes('image/svg+xml')) {
       return await res.text();
     }
+    if (contentType && contentType.includes('application/pdf')) {
+      return await res.blob();
+    }
     return await res.json();
   } catch (err) {
     console.error(`API Request Error [${endpoint}]:`, err);

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { 
   X, Shield, CheckCircle, AlertTriangle, AlertCircle, Sparkles, 
-  RotateCw, Flag, Check, ChevronDown, ChevronUp, FileText, QrCode, 
-  ExternalLink, Lock, History, User, Building, Calendar, Zap, Activity
+  RotateCw, Flag, Check, ChevronDown, ChevronUp, FileText, QrCode,
+  ExternalLink, Lock, History, User, Building, Calendar, Zap, Activity, Download
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { fetchRecDetail, verifyRec, submitAuditAction } from '../../api/client';
+import { fetchRecDetail, verifyRec, submitAuditAction, fetchRecReport } from '../../api/client';
 import { Link } from 'react-router-dom';
 
 export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
@@ -24,6 +24,7 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
   // Expandable state
   const [expandedCheck, setExpandedCheck] = useState(null);
   const [showQrModal, setShowQrModal] = useState(false);
+  const [downloadingReport, setDownloadingReport] = useState(false);
   // RS-14: rendered client-side with qrcode.react - the frontend already knows its own origin,
   // so the QR just points at the public verify route it serves itself. No backend call needed.
   const publicUrl = recId ? `${window.location.origin}/verify/${recId}` : '';
@@ -91,6 +92,25 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
       setActionError(err.message || `Failed to submit ${actionType}`);
     } finally {
       setSubmittingAction(null);
+    }
+  };
+
+  const handleDownloadReport = async () => {
+    try {
+      setDownloadingReport(true);
+      const blob = await fetchRecReport(recId); // RS-15: PDF, via ReportLab
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${recId}-report.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(`Could not download report: ${err.message}`);
+    } finally {
+      setDownloadingReport(false);
     }
   };
 
@@ -211,6 +231,15 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleDownloadReport}
+                    disabled={downloadingReport}
+                    className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors disabled:opacity-50"
+                  >
+                    <Download className={`w-3.5 h-3.5 text-emerald-400 ${downloadingReport ? 'animate-pulse' : ''}`} />
+                    <span>{downloadingReport ? 'Building PDF...' : 'Download Report'}</span>
+                  </button>
+
                   <button
                     onClick={() => setShowQrModal(true)}
                     className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors"

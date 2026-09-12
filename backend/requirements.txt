@@ -8,5 +8,6 @@ numpy>=1.26
 scikit-learn>=1.5
 joblib>=1.4
 networkx>=3.3
+reportlab>=4.2
 anthropic
 pytest>=8
