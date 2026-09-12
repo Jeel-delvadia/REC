@@ -16,8 +16,9 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
   // Auditor Action Form state
   const [auditorName, setAuditorName] = useState('Senior Auditor');
   const [actionNote, setActionNote] = useState('');
-  const [submittingAction, setSubmittingAction] = useState(false);
+  const [submittingAction, setSubmittingAction] = useState(null); // holds the action in flight
   const [actionSuccessMsg, setActionSuccessMsg] = useState('');
+  const [actionError, setActionError] = useState('');
 
   // Expandable state
   const [expandedCheck, setExpandedCheck] = useState(null);
@@ -56,27 +57,37 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
     }
   };
 
+  // Backend ActionType is approve | reject | report | note | request_verification (schemas/common.py).
+  // A note is required for every action except approve.
+  const ACTION_LABELS = {
+    approve: 'Approve',
+    request_verification: 'Request Verification',
+    reject: 'Reject',
+    report: 'Report Fraud',
+  };
+
   const handleAuditSubmit = async (actionType) => {
     if (!auditorName.trim()) {
-      alert('Please enter auditor name');
+      setActionError('Enter an auditor name first.');
+      return;
+    }
+    if (actionType !== 'approve' && !actionNote.trim()) {
+      setActionError(`A note is required to ${actionType.replace('_', ' ')} this REC.`);
       return;
     }
     try {
-      setSubmittingAction(true);
+      setSubmittingAction(actionType);
+      setActionError('');
       setActionSuccessMsg('');
-      await submitAuditAction(recId, {
-        action: actionType,
-        auditor: auditorName,
-        note: actionNote || `Auditor set status to ${actionType}`,
-      });
-      setActionSuccessMsg(`Successfully recorded action: ${actionType.toUpperCase()}`);
+      await submitAuditAction(recId, { action: actionType, auditor: auditorName, note: actionNote || null });
+      setActionSuccessMsg(`Recorded: ${ACTION_LABELS[actionType]}`);
       setActionNote('');
       await loadDetail();
       if (onActionSuccess) onActionSuccess();
     } catch (err) {
-      alert(`Failed to submit action: ${err.message}`);
+      setActionError(err.message || `Failed to submit ${actionType}`);
     } finally {
-      setSubmittingAction(false);
+      setSubmittingAction(null);
     }
   };
 
@@ -90,24 +101,29 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
     }
   };
 
-  const getRiskBandBadge = (band, score) => {
-    switch (band) {
-      case 'genuine':
-        return <span className="px-3 py-1 rounded-full text-xs font-semibold badge-genuine flex items-center gap-1.5"><CheckCircle className="w-3.5 h-3.5" /> Genuine ({score})</span>;
-      case 'suspicious':
-        return <span className="px-3 py-1 rounded-full text-xs font-semibold badge-suspicious flex items-center gap-1.5"><AlertCircle className="w-3.5 h-3.5" /> Suspicious ({score})</span>;
-      case 'high_risk':
-        return <span className="px-3 py-1 rounded-full text-xs font-semibold badge-high_risk flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" /> High Risk ({score})</span>;
-      case 'likely_fraud':
-        return <span className="px-3 py-1 rounded-full text-xs font-semibold badge-likely_fraud flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" /> Likely Fraud ({score})</span>;
-      default:
-        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-300">Unverified</span>;
-    }
+  // Report §6/§9: "Risk Score N/100 · LABEL".
+  const BAND_META = {
+    genuine: { label: 'Genuine', icon: CheckCircle, cls: 'badge-genuine' },
+    suspicious: { label: 'Suspicious', icon: AlertCircle, cls: 'badge-suspicious' },
+    high_risk: { label: 'High Risk', icon: AlertTriangle, cls: 'badge-high_risk' },
+    likely_fraud: { label: 'Likely Fraud', icon: AlertTriangle, cls: 'badge-likely_fraud' },
   };
 
+  const getRiskBandBadge = (band, score) => {
+    const meta = BAND_META[band];
+    if (!meta) return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-300">Not Yet Verified</span>;
+    const Icon = meta.icon;
+    return (
+      <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${meta.cls} flex items-center gap-1.5`}>
+        <Icon className="w-3.5 h-3.5" /> Risk Score {score}/100 &middot; {meta.label}
+      </span>
+    );
+  };
+
+  // Backend CheckStatus is pass | warn | fail (report §6: below 40 / 40-79 / 80+).
   const getCheckStatusIcon = (status) => {
     if (status === 'pass') return <CheckCircle className="w-4 h-4 text-emerald-400" />;
-    if (status === 'soft_flag') return <AlertCircle className="w-4 h-4 text-amber-400" />;
+    if (status === 'warn') return <AlertCircle className="w-4 h-4 text-amber-400" />;
     return <AlertTriangle className="w-4 h-4 text-rose-400" />;
   };
 
@@ -124,8 +140,8 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
               <Shield className="w-6 h-6" />
             </div>
             <div>
-              <div className="flex items-center gap-3">
-                <h2 className="text-xl font-bold text-white font-mono tracking-tight">{recId}</h2>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h2 className="text-xl font-bold text-white font-mono tracking-tight">{recId} &middot; Verification Result</h2>
                 {detail && getRiskBandBadge(detail.risk_band, detail.risk_score)}
               </div>
               <p className="text-xs text-slate-400">Detailed Verification & Cryptographic Audit Trail</p>
@@ -224,7 +240,7 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
               {/* 5-Point Verification Risk Check Matrix */}
               <div>
                 <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-sky-400" /> 5-Point Verification Audit Engine
+                  <Shield className="w-4 h-4 text-sky-400" /> Verification Checks
                 </h3>
 
                 {detail.verification ? (
@@ -247,8 +263,10 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
 
                             <div className="flex items-center gap-4">
                               <div className="text-right">
-                                <span className="text-[10px] text-slate-500 uppercase font-semibold">Risk Weight {check.weight}x</span>
-                                <p className="text-xs font-mono font-bold text-slate-300">Risk Score: {(check.risk * 100).toFixed(0)}%</p>
+                                <span className="text-[10px] text-slate-500 uppercase font-semibold">
+                                  {check.weight === 0 ? 'Gate (not weighted)' : `Weight ${check.weight} pts`}
+                                </span>
+                                <p className="text-xs font-mono font-bold text-slate-300">Sub-score: {(check.risk * 100).toFixed(0)}/100</p>
                               </div>
                               {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
                             </div>
@@ -257,7 +275,13 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
                           {/* Expanded JSON details */}
                           {isExpanded && check.details && (
                             <div className="p-3.5 bg-slate-900/90 border-t border-slate-800/80 text-xs font-mono text-slate-300">
-                              <p className="text-[11px] text-sky-400 font-sans font-semibold mb-2">Technical Telemetry Raw Input Data:</p>
+                              {check.reason_code && (
+                                <p className="text-[11px] mb-2">
+                                  <span className="text-slate-500 font-sans">reason code&nbsp;</span>
+                                  <span className="text-amber-400">{check.reason_code}</span>
+                                </p>
+                              )}
+                              <p className="text-[11px] text-sky-400 font-sans font-semibold mb-2">Underlying numbers:</p>
                               <pre className="p-2.5 rounded-lg bg-slate-950 overflow-x-auto text-[11px] text-slate-300">
                                 {JSON.stringify(check.details, null, 2)}
                               </pre>
@@ -299,57 +323,72 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
                     {actionSuccessMsg}
                   </div>
                 )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                  <div>
-                    <label className="block text-[11px] text-slate-400 font-medium mb-1">Auditor Name</label>
-                    <input
-                      type="text"
-                      value={auditorName}
-                      onChange={(e) => setAuditorName(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-800 focus:border-sky-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none"
-                      placeholder="Enter name"
-                    />
+                {actionError && (
+                  <div className="mb-3 p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-semibold">
+                    {actionError}
                   </div>
+                )}
 
-                  <div>
-                    <label className="block text-[11px] text-slate-400 font-medium mb-1">Audit Log Note / Reason</label>
-                    <input
-                      type="text"
-                      value={actionNote}
-                      onChange={(e) => setActionNote(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-800 focus:border-sky-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none"
-                      placeholder="Add compliance notes..."
-                    />
-                  </div>
+                <div className="mb-3">
+                  <label className="block text-[11px] text-slate-400 font-medium mb-1">Auditor Name</label>
+                  <input
+                    type="text"
+                    value={auditorName}
+                    onChange={(e) => setAuditorName(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 focus:border-sky-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none"
+                    placeholder="Enter name"
+                  />
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="mb-3">
+                  <label className="block text-[11px] text-slate-400 font-medium mb-1">
+                    Investigation Note <span className="text-slate-600">(required for everything except Approve)</span>
+                  </label>
+                  <textarea
+                    value={actionNote}
+                    onChange={(e) => setActionNote(e.target.value)}
+                    rows={2}
+                    className="w-full bg-slate-900 border border-slate-800 focus:border-sky-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none resize-none"
+                    placeholder="What did you find? What evidence backs this decision?"
+                  />
+                </div>
+
+                {/* Report §9 Figure 3: Approve / Request Verification / Reject / Report Fraud */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <button
-                    onClick={() => handleAuditSubmit('clear')}
-                    disabled={submittingAction}
-                    className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30 text-xs font-bold transition-colors disabled:opacity-50"
+                    onClick={() => handleAuditSubmit('approve')}
+                    disabled={!!submittingAction}
+                    className="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30 text-xs font-bold transition-colors disabled:opacity-50"
                   >
                     <Check className="w-4 h-4" />
-                    <span>Approve & Clear REC</span>
+                    <span>{submittingAction === 'approve' ? 'Submitting...' : 'Approve'}</span>
                   </button>
 
                   <button
-                    onClick={() => handleAuditSubmit('flag')}
-                    disabled={submittingAction}
-                    className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30 text-xs font-bold transition-colors disabled:opacity-50"
+                    onClick={() => handleAuditSubmit('request_verification')}
+                    disabled={!!submittingAction}
+                    className="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-sky-500/20 text-sky-300 border border-sky-500/30 hover:bg-sky-500/30 text-xs font-bold transition-colors disabled:opacity-50"
+                  >
+                    <RotateCw className="w-4 h-4" />
+                    <span>{submittingAction === 'request_verification' ? 'Submitting...' : 'Request Verification'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleAuditSubmit('reject')}
+                    disabled={!!submittingAction}
+                    className="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 hover:bg-amber-500/30 text-xs font-bold transition-colors disabled:opacity-50"
                   >
                     <Flag className="w-4 h-4" />
-                    <span>Flag Fraud Risk</span>
+                    <span>{submittingAction === 'reject' ? 'Submitting...' : 'Reject'}</span>
                   </button>
 
                   <button
-                    onClick={() => handleAuditSubmit('escalate')}
-                    disabled={submittingAction}
-                    className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:bg-rose-500/30 text-xs font-bold transition-colors disabled:opacity-50"
+                    onClick={() => handleAuditSubmit('report')}
+                    disabled={!!submittingAction}
+                    className="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:bg-rose-500/30 text-xs font-bold transition-colors disabled:opacity-50"
                   >
                     <AlertTriangle className="w-4 h-4" />
-                    <span>Escalate to Authorities</span>
+                    <span>{submittingAction === 'report' ? 'Submitting...' : 'Report Fraud'}</span>
                   </button>
                 </div>
               </div>
