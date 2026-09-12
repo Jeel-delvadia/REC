@@ -3,7 +3,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.database import utcnow
-from app.models import AuditAction, Plant, Rec, Transaction, VerificationResult
+from app.models import AuditAction, Meter, Plant, Rec, Transaction, VerificationResult
 from app.schemas.rec import RecCreate
 from app.services import NotFoundError, audit_service
 
@@ -83,6 +83,16 @@ def create_rec(db: Session, data: RecCreate) -> dict:
     if db.get(Rec, rec_id):
         raise ValueError(f"REC with ID {rec_id} already exists")
 
+    # RS-02: a REC always has a meter - fall back to the plant's default one if none was given,
+    # provisioning it on the fly (the CSV ingest path does the same for rows that predate meters).
+    meter_id = data.meter_id
+    if not meter_id:
+        meter_id = f"{data.plant_id}-M1"
+        if not db.get(Meter, meter_id):
+            db.add(Meter(id=meter_id, plant_id=data.plant_id))
+    elif not db.get(Meter, meter_id):
+        raise NotFoundError(f"Meter {meter_id} not found")
+
     now = utcnow()
     rec = Rec(
         id=rec_id,
@@ -93,6 +103,10 @@ def create_rec(db: Session, data: RecCreate) -> dict:
         issued_at=now,
         holder=data.holder,
         status="pending",
+        meter_id=meter_id,
+        interval_start=data.interval_start,
+        interval_end=data.interval_end,
+        issuer=data.issuer,
     )
     db.add(rec)
 
@@ -112,7 +126,7 @@ def create_rec(db: Session, data: RecCreate) -> dict:
         "holder": rec.holder,
         "at": now.isoformat(),
     }
-    audit_service.append_ledger(db, "issued", rec.id, payload)
+    audit_service.append_ledger(db, "ISSUED", rec.id, payload)
     db.commit()
 
     # Automatically verify newly uploaded REC
@@ -144,4 +158,9 @@ def get_detail(db: Session, rec_id: str) -> dict:
         "plant": rec.plant,
         "verification": latest_verification(db, rec_id),
         "actions": actions,
+        "meter_id": rec.meter_id,
+        "interval_start": rec.interval_start,
+        "interval_end": rec.interval_end,
+        "issuer": rec.issuer,
+        "fingerprint": rec.fingerprint,
     }
