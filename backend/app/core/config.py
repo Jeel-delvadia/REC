@@ -18,6 +18,12 @@ class Settings(BaseSettings):
     # Where QR codes point: the frontend's public verification page.
     PUBLIC_BASE_URL: str = "http://localhost:5173"
 
+    # RS-16: Supabase Auth. Project Settings -> API -> JWT Settings -> "JWT Secret" (legacy
+    # HS256 shared secret - Supabase still issues these alongside the newer signing keys).
+    # Left empty, auditor routes fall back to an unauthenticated "local-dev" identity, so
+    # pytest and a plain local run keep working without Supabase configured.
+    SUPABASE_JWT_SECRET: str = ""
+
     DATA_DIR: Path = BACKEND_DIR / "data" / "simulated"
     ANOMALY_MODEL_PATH: Path = BACKEND_DIR / "ml" / "artifacts" / "isolation_forest.joblib"
 

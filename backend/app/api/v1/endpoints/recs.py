@@ -3,6 +3,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app.core.auth import Auditor, get_current_auditor
 from app.core.database import get_db
 from app.schemas.common import RecStatus, RiskBand
 from app.schemas.rec import PlantOut, RecCreate, RecDetail, RecPage, VerificationOut
@@ -35,7 +36,7 @@ def list_plants(db: Session = Depends(get_db)):
 
 
 @router.post("", response_model=RecDetail, status_code=201)
-def create_rec(body: RecCreate, db: Session = Depends(get_db)):
+def create_rec(body: RecCreate, db: Session = Depends(get_db), _auditor: Auditor = Depends(get_current_auditor)):
     try:
         return rec_service.create_rec(db, body)
     except ValueError as err:
@@ -48,5 +49,5 @@ def get_rec(rec_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/{rec_id}/verify", response_model=VerificationOut)
-def verify_rec(rec_id: str, db: Session = Depends(get_db)):
+def verify_rec(rec_id: str, db: Session = Depends(get_db), _auditor: Auditor = Depends(get_current_auditor)):
     return verification_service.verify_rec(db, rec_id)
