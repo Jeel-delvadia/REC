@@ -4,6 +4,8 @@ from pydantic import BaseModel, ConfigDict
 
 # genuine 0-30, suspicious 31-60, high_risk 61-80, likely_fraud 81-100 (report §6).
 RiskBand = Literal["genuine", "suspicious", "high_risk", "likely_fraud"]
+# Everything an alert can be raised for: the fraud band, plus the two non-scored triggers (§8, §10).
+AlertSeverity = Literal["genuine", "suspicious", "high_risk", "likely_fraud", "ledger_integrity", "circular_transfer"]
 RecStatus = Literal["pending", "approved", "rejected", "reported"]
 ActionType = Literal["approve", "reject", "report", "note", "request_verification"]
 CheckStatus = Literal["pass", "warn", "fail"]
