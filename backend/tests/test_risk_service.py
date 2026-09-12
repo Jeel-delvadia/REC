@@ -29,6 +29,13 @@ def test_a_single_failed_check_alone_does_not_reach_likely_fraud():
     assert risk_service.band_for(score) == "genuine"
 
 
+def test_fingerprint_match_is_maximum_duplicate_risk_regardless_of_overlap():
+    # Report §7: an exact fingerprint match is DOUBLE COUNTING DETECTED outright.
+    m = {"overlapping_recs": [], "total_claim_ratio": 1.0, "fingerprint_matches": ["REC-001"]}
+    assert risk_service.check_risks({"duplicate": m})["duplicate"] == 1.0
+    assert risk_service.check_reason("duplicate", m) == "DUPLICATE_FINGERPRINT_MATCH"
+
+
 def test_physics_risk_ramps_with_ratio():
     base = {"days": 15, "days_over_capacity": 0}
     assert risk_service.check_risks({"physics": {**base, "ratio": 1.0}})["physics"] == 0.0

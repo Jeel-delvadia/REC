@@ -24,6 +24,12 @@ class RecCreate(BaseModel):
     period_end: date
     energy_mwh: float
     holder: str
+    # RS-02: optional for now (a plant's default meter is used when omitted) - RS-05's
+    # fingerprint check needs meter_id + interval to identify a generation event uniquely.
+    meter_id: str | None = None
+    interval_start: datetime | None = None
+    interval_end: datetime | None = None
+    issuer: str | None = None
 
 
 
@@ -73,3 +79,8 @@ class RecDetail(RecSummary):
     plant: PlantOut
     verification: VerificationOut | None
     actions: list[AuditActionOut]
+    meter_id: str | None = None
+    interval_start: datetime | None = None
+    interval_end: datetime | None = None
+    issuer: str | None = None
+    fingerprint: str | None = None

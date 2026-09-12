@@ -47,13 +47,17 @@ def _meter_match(m: dict) -> float:
 
 
 def _duplicate(m: dict) -> float:
+    if m.get("fingerprint_matches"):
+        return 1.0  # report §7: an exact fingerprint match is DOUBLE COUNTING DETECTED, full stop
     if not m["overlapping_recs"]:
         return 0.0
     return max(0.6, _ramp(m["total_claim_ratio"], 1.0, 1.5))
 
 
 def _anomaly(m: dict) -> float:
-    return _ramp(m["fraction"], 0.05, 0.30) if m["available"] else 0.0
+    if not m["available"]:
+        return 0.0
+    return 1.0 if m["is_anomalous"] else _ramp(m["anomaly_score"], 0.5, 0.85)
 
 
 def _provenance(m: dict) -> float:
@@ -92,13 +96,15 @@ def _meter_match_reason(m: dict) -> str:
 
 
 def _duplicate_reason(m: dict) -> str:
+    if m.get("fingerprint_matches"):
+        return "DUPLICATE_FINGERPRINT_MATCH"
     return "DUPLICATE_OVERLAPPING_CLAIM" if m["overlapping_recs"] else "DUPLICATE_NONE_FOUND"
 
 
 def _anomaly_reason(m: dict) -> str:
     if not m["available"]:
         return "ANOMALY_MODEL_UNAVAILABLE"
-    return "ANOMALY_UNUSUAL_PATTERN" if m["fraction"] > 0.05 else "ANOMALY_NORMAL_PATTERN"
+    return "ANOMALY_UNUSUAL_PATTERN" if m["is_anomalous"] else "ANOMALY_NORMAL_PATTERN"
 
 
 def _provenance_reason(m: dict) -> str:

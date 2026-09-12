@@ -37,8 +37,14 @@ class PlantRow(BaseModel):
         return v
 
 
+class MeterRow(BaseModel):
+    id: str
+    plant_id: str
+
+
 class GenerationRow(BaseModel):
     plant_id: str
+    meter_id: str | None = None  # RS-02: filled in from meters.csv, or a per-plant default, if absent
     day: date
     energy_kwh: float
     irradiation_kwh_m2: float | None = None
@@ -66,6 +72,10 @@ class RecRow(BaseModel):
     energy_mwh: float
     issued_at: datetime
     holder: str
+    meter_id: str | None = None
+    interval_start: datetime | None = None
+    interval_end: datetime | None = None
+    issuer: str | None = None
 
     @field_validator("energy_mwh")
     @classmethod

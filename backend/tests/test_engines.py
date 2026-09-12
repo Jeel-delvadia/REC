@@ -9,15 +9,31 @@ def test_expected_generation_uses_peak_sun_hours():
 
 
 def test_physics_compares_meter_with_sunlight():
-    result = physics.assess(1000, metered_kwh=[6000, 6000], irradiation=[5.0, 5.0])
+    result = physics.assess(1000, metered_kwh=[6000, 6000], irradiation=[5.0, 5.0], performance_ratio=0.8)
     assert result["expected_kwh"] == 8000
     assert result["ratio"] == 1.5
     assert result["days_over_capacity"] == 0
 
 
 def test_physics_flags_days_above_plant_maximum():
-    result = physics.assess(1000, metered_kwh=[9000], irradiation=[7.0])
+    result = physics.assess(1000, metered_kwh=[9000], irradiation=[7.0], performance_ratio=0.8)
     assert result["days_over_capacity"] == 1
+
+
+def test_default_performance_ratio_is_derived_from_pvlib_pvwatts_defaults():
+    # Not hand-picked: (1 - pvwatts_losses()/100) * inverter.pvwatts's default eta_inv_nom.
+    assert 0.75 < physics.DEFAULT_PERFORMANCE_RATIO < 0.90
+
+
+def test_assess_claim_matches_the_report_worked_example_shape():
+    # Report §5: 100 MW plant, 1h interval, 180 MWh claimed, ~74 MWh physics estimate.
+    result = physics.assess_claim(
+        capacity_kw=100_000, claimed_kwh=180_000, interval_hours=1,
+        irradiation_kwh_m2=0.9, performance_ratio=0.8248,
+    )
+    assert result["ceiling_kwh"] == 100_000
+    assert result["exceeds_ceiling"] is True
+    assert 70_000 < result["expected_kwh"] < 78_000
 
 
 def test_overlapping_recs_count_towards_total_claim():
@@ -43,6 +59,34 @@ def test_partial_overlap_is_prorated():
 
 def test_claim_without_meter_data_is_not_a_zero_ratio():
     assert duplicate.claim_vs_meter(5_000, 0, 0, 15)["claim_ratio"] == duplicate.NO_BASELINE
+
+
+def test_fingerprint_is_deterministic():
+    args = ("PLT-001", "PLT-001-M1", date(2026, 4, 1), date(2026, 4, 1), 72.0)
+    assert duplicate.fingerprint(*args) == duplicate.fingerprint(*args)
+
+
+def test_fingerprint_changes_with_any_input():
+    base = duplicate.fingerprint("PLT-001", "PLT-001-M1", date(2026, 4, 1), date(2026, 4, 1), 72.0)
+    assert duplicate.fingerprint("PLT-002", "PLT-001-M1", date(2026, 4, 1), date(2026, 4, 1), 72.0) != base
+    assert duplicate.fingerprint("PLT-001", "PLT-001-M1", date(2026, 4, 1), date(2026, 4, 1), 72.1) != base
+
+
+def test_fingerprint_accepts_date_or_datetime():
+    # Report §7 example: Plant A, Meter M-01, 1 April 12:00-13:00, 72 MWh.
+    fp = duplicate.fingerprint(
+        "PLT-A", "M-01", datetime(2026, 4, 1, 12, 0), datetime(2026, 4, 1, 13, 0), 72.0
+    )
+    assert isinstance(fp, str) and len(fp) == 64
+
+
+def test_double_counting_reports_a_fingerprint_match_separately_from_overlap():
+    result = duplicate.double_counting(
+        claimed_kwh=72_000, metered_kwh=72_000,
+        period=(date(2026, 4, 1), date(2026, 4, 1)), other_claims=[],
+        fingerprint_matches=["REC-001"],
+    )
+    assert result["fingerprint_matches"] == ["REC-001"]
 
 
 def _chain(payloads):

@@ -8,6 +8,7 @@ class IngestRequest(BaseModel):
 
 class IngestResult(BaseModel):
     plants: int
+    meters: int = 0
     generation: int
     recs: int
     transactions: int

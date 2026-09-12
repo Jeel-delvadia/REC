@@ -11,13 +11,19 @@ from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.models import Alert, AuditAction, Generation, LedgerEntry, Plant, Rec, Transaction, VerificationResult
-from app.schemas.ingest_rows import GenerationRow, PlantRow, RecRow, TransactionRow
+from app.engines.duplicate import fingerprint as compute_fingerprint
+from app.models import Alert, AuditAction, Generation, LedgerEntry, Meter, Plant, Rec, Transaction, VerificationResult
+from app.schemas.ingest_rows import GenerationRow, MeterRow, PlantRow, RecRow, TransactionRow
 from app.services import NotFoundError, audit_service, verification_service
 
 FILES = ("plants.csv", "generation.csv", "recs.csv", "transactions.csv")
+OPTIONAL_FILES = ("meters.csv",)  # RS-02: if absent, one default meter per plant is provisioned
 # Children before parents, so foreign keys never block the wipe.
-RESET_ORDER = (Alert, AuditAction, VerificationResult, Transaction, LedgerEntry, Rec, Generation, Plant)
+RESET_ORDER = (Alert, AuditAction, VerificationResult, Transaction, LedgerEntry, Rec, Generation, Meter, Plant)
+
+
+def _default_meter_id(plant_id: str) -> str:
+    return f"{plant_id}-M1"
 
 
 def _read(directory: Path, name: str) -> list[dict]:
@@ -56,13 +62,35 @@ def load_csv_data(db: Session, *, reset: bool = True, verify: bool = True, direc
     rec_rows = _validate_rows("recs.csv", _read(directory, "recs.csv"), RecRow, errors)
     transaction_rows = _validate_rows("transactions.csv", _read(directory, "transactions.csv"), TransactionRow, errors)
 
-    # Referential checks against the batch being loaded - a row can be well-formed on its own
-    # and still point at a plant or REC that doesn't exist anywhere in this ingest.
     known_plants = {row.id for row in plant_rows}
-    known_recs = {row.id for row in rec_rows}
+    meter_rows = (
+        _validate_rows("meters.csv", _read(directory, "meters.csv"), MeterRow, errors)
+        if (directory / "meters.csv").exists()
+        else [MeterRow(id=_default_meter_id(p.id), plant_id=p.id) for p in plant_rows]
+    )
+    known_meters = {row.id for row in meter_rows}
+
+    # Referential checks against the batch being loaded - a row can be well-formed on its own
+    # and still point at a plant, meter or REC that doesn't exist anywhere in this ingest.
     generation_rows = _drop_unknown_refs("generation.csv", generation_rows, "plant_id", known_plants, errors)
     rec_rows = _drop_unknown_refs("recs.csv", rec_rows, "plant_id", known_plants, errors)
+    known_recs = {row.id for row in rec_rows}
     transaction_rows = _drop_unknown_refs("transactions.csv", transaction_rows, "rec_id", known_recs, errors)
+
+    # A row that didn't name a meter gets its plant's default one, so meter_id is never left
+    # dangling even when the CSVs predate RS-02.
+    for row in generation_rows:
+        if row.meter_id is None:
+            row.meter_id = _default_meter_id(row.plant_id)
+        elif row.meter_id not in known_meters:
+            errors.append(f"generation.csv: meter_id '{row.meter_id}' not found in this batch - defaulted instead")
+            row.meter_id = _default_meter_id(row.plant_id)
+    for row in rec_rows:
+        if row.meter_id is None:
+            row.meter_id = _default_meter_id(row.plant_id)
+        elif row.meter_id not in known_meters:
+            errors.append(f"recs.csv: meter_id '{row.meter_id}' not found in this batch - defaulted instead")
+            row.meter_id = _default_meter_id(row.plant_id)
 
     plants = [
         Plant(
@@ -71,14 +99,25 @@ def load_csv_data(db: Session, *, reset: bool = True, verify: bool = True, direc
         )
         for row in plant_rows
     ]
+    meters = [Meter(id=row.id, plant_id=row.plant_id) for row in meter_rows]
     generation = [
-        Generation(plant_id=row.plant_id, day=row.day, energy_kwh=row.energy_kwh, irradiation_kwh_m2=row.irradiation_kwh_m2)
+        Generation(
+            plant_id=row.plant_id, meter_id=row.meter_id, day=row.day,
+            energy_kwh=row.energy_kwh, irradiation_kwh_m2=row.irradiation_kwh_m2,
+        )
         for row in generation_rows
     ]
     recs = [
         Rec(
             id=row.id, plant_id=row.plant_id, period_start=row.period_start, period_end=row.period_end,
             energy_mwh=row.energy_mwh, issued_at=row.issued_at, holder=row.holder,
+            meter_id=row.meter_id, interval_start=row.interval_start, interval_end=row.interval_end, issuer=row.issuer,
+            # RS-05: interval_start/end fall back to the day-level period when a row predates
+            # hourly intervals, so every REC still gets a fingerprint.
+            fingerprint=compute_fingerprint(
+                row.plant_id, row.meter_id, row.interval_start or row.period_start,
+                row.interval_end or row.period_end, row.energy_mwh,
+            ),
         )
         for row in rec_rows
     ]
@@ -86,7 +125,7 @@ def load_csv_data(db: Session, *, reset: bool = True, verify: bool = True, direc
         Transaction(rec_id=row.rec_id, from_party=row.from_party, to_party=row.to_party, timestamp=row.timestamp, kind=row.kind)
         for row in transaction_rows
     ]
-    db.add_all(plants + generation + recs + transactions)
+    db.add_all(plants + meters + generation + recs + transactions)
     db.flush()
 
     # Record issuance and every transfer on the ledger, oldest first.
@@ -119,6 +158,7 @@ def load_csv_data(db: Session, *, reset: bool = True, verify: bool = True, direc
 
     return {
         "plants": len(plants),
+        "meters": len(meters),
         "generation": len(generation),
         "recs": len(recs),
         "transactions": len(transactions),
