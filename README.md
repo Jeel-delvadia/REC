@@ -101,6 +101,16 @@ recshield/
 
 ## Getting started
 
+> **Never copy `.venv/`, `node_modules/`, or `*.db` between machines.** They're gitignored on
+> purpose. `.venv` bakes in the exact original file path and OS/CPU-specific compiled binaries
+> (`numpy`, `pandas`, `scikit-learn`, `psycopg[binary]`, `cryptography` all ship native code) —
+> copying it to another machine causes import errors or silent path breakage that look nothing
+> like "wrong Python version." Every machine (including CI and any deploy target) should run
+> `pip install -r requirements.txt` / `npm install` itself, into its own fresh `.venv` /
+> `node_modules`. The only things that *should* move between machines by hand are the two
+> `.env` files (see below) and, optionally, `backend/recshield.db` if you want to carry demo
+> data over instead of reseeding.
+
 ### Backend
 
 From `backend/`:
@@ -112,21 +122,23 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload     # API docs at http://localhost:8000/docs
 ```
 
-`backend/.env` isn't committed. Create it with:
+`backend/.env` isn't committed — copy `backend/.env.example` to `backend/.env` and fill it in.
+At minimum for local dev:
 
 ```
 DATABASE_URL=sqlite:///./recshield.db
 CORS_ORIGINS=["http://localhost:5173"]
-LLM_API_KEY=your-anthropic-key-here     # optional — falls back to a template explanation
-LLM_MODEL=claude-opus-5                 # optional
-
-# Optional — enables real Supabase Auth + RBAC. Leave both blank to skip login entirely
-# (every request is treated as a local-dev registry_admin).
-SUPABASE_JWT_SECRET=
-SUPABASE_URL=
 ```
 
-Postgres works too: `DATABASE_URL=postgresql+psycopg://user:password@localhost:5432/recshield`.
+`LLM_API_KEY` and the Supabase variables are optional locally (see `.env.example` for what each
+one does and when you need it). Postgres works too:
+`DATABASE_URL=postgresql+psycopg://user:password@localhost:5432/recshield`.
+
+> **If every API call 401s with "Invalid session token: ... (iat)"**, it's not a code bug — the
+> machine's system clock is behind real time, so the JWT's issued-at timestamp looks like it's
+> in the future. Fix the system clock (enable automatic time sync). A small clock-drift leeway
+> is already built in (`app/core/auth.py`), but it can't compensate for a clock that's minutes
+> or hours wrong.
 
 ### Demo data
 
@@ -156,17 +168,10 @@ npm install
 npm run dev                       # http://localhost:5173
 ```
 
-`frontend/.env` isn't committed either. Create it with:
-
-```
-# Leave blank to talk to the Vite dev proxy at /api (see vite.config.js) - fine for local dev.
-VITE_API_BASE_URL=
-
-# Leave both blank to skip auditor login entirely (matches the backend's soft-gate default).
-# Fill in from your Supabase project's Settings -> API page to require sign-in.
-VITE_SUPABASE_URL=
-VITE_SUPABASE_ANON_KEY=
-```
+`frontend/.env` isn't committed either — copy `frontend/.env.example` to `frontend/.env`. Leave
+everything blank for local dev (requests go through Vite's own dev proxy to
+`http://localhost:8000`, and auth is skipped entirely) — see the next section for what has to
+be filled in once you deploy.
 
 Flow: **Landing (`/`) → Sign in / Sign up (`/login`) → Dashboard (`/dashboard`)**, then the rest
 of the app (Certificates, Graph Analysis, Audit History, Data Hub, Marketplace, Purchase
@@ -198,6 +203,39 @@ Everything is under `/api/v1` (interactive docs at `/docs`):
 | Data Hub | `POST /ingest`, `GET /ingest/data-quality/latest` |
 | Marketplace | `GET /marketplace`, `POST /recs/{id}/purchase-requests`, `GET /purchase-requests`, `POST /purchase-requests/{id}/approve\|reject` |
 | Users | `GET /auth/me`, `GET /admin/users`, `PATCH /admin/users/{id}/role` |
+
+## Deploying
+
+**The frontend is a Vercel-native static build; the backend is not.** Vercel's serverless
+functions aren't a good fit for this backend as-is — it holds a live SQLAlchemy/Postgres
+connection, loads a trained scikit-learn model from disk, and runs a batch ingest job, none of
+which suit a stateless, short-lived function well. Deploy them separately:
+
+### Frontend → Vercel
+
+1. Import the repo in Vercel, set the project root to `frontend/`. Vercel auto-detects Vite
+   (`npm install && npm run build`, output `dist/`).
+2. `vercel.json` (already in `frontend/`) rewrites every path to `index.html`, so client-side
+   routes like `/dashboard` or `/login` don't 404 on a hard refresh or direct link.
+3. Set these in the Vercel project's Environment Variables (same names as `.env.example`):
+   - `VITE_API_BASE_URL` — the backend's real, public URL (see below). **Required** — unlike
+     local dev there is no proxy in a production build, so leaving this blank means every API
+     call 404s against Vercel's own domain instead.
+   - `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` — optional, only if you want real auth.
+
+### Backend → any host that runs a long-lived process (Render, Railway, Fly.io, a VPS, ...)
+
+1. Provision a **real Postgres** database (Supabase's own Postgres works, or the host's
+   managed Postgres) — SQLite's on-disk file won't survive most hosts' ephemeral filesystems.
+2. Set `DATABASE_URL` to that Postgres URL, and set the rest from `backend/.env.example`:
+   - `CORS_ORIGINS` — must include your deployed Vercel URL, e.g.
+     `["https://your-app.vercel.app"]` (the built-in regex only allows localhost/LAN origins).
+   - `PUBLIC_BASE_URL` — your deployed frontend's URL, so PDF reports link somewhere real.
+   - `SUPABASE_JWT_SECRET` or `SUPABASE_URL` — same Supabase project as the frontend, if using auth.
+3. Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`.
+4. Run `python -m scripts.seed_data` once (from a shell on that host, against that database) to
+   load demo data and train the anomaly model — or point `DATABASE_URL` at a database you've
+   already seeded elsewhere.
 
 ## Working on this repo
 

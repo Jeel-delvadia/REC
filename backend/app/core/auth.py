@@ -67,11 +67,22 @@ def _get_jwks_client() -> jwt.PyJWKClient:
 
 def _decode(token: str) -> dict:
     try:
+        # leeway: tolerates ordinary clock drift between this machine and Supabase's servers
+        # when checking iat/exp/nbf - without it, PyJWT rejects an otherwise-valid token as
+        # "not yet valid (iat)" any time the local system clock is even a few seconds behind
+        # real time (common on a machine whose clock hasn't synced recently). This doesn't fix
+        # a badly wrong clock (minutes/hours off) - only a corrected system clock does that.
         if settings.SUPABASE_JWT_SECRET:
-            return jwt.decode(token, settings.SUPABASE_JWT_SECRET, algorithms=["HS256"], audience=_EXPECTED_AUDIENCE)
+            return jwt.decode(
+                token, settings.SUPABASE_JWT_SECRET, algorithms=["HS256"],
+                audience=_EXPECTED_AUDIENCE, leeway=60,
+            )
 
         signing_key = _get_jwks_client().get_signing_key_from_jwt(token)
-        return jwt.decode(token, signing_key.key, algorithms=["RS256", "ES256"], audience=_EXPECTED_AUDIENCE)
+        return jwt.decode(
+            token, signing_key.key, algorithms=["RS256", "ES256"],
+            audience=_EXPECTED_AUDIENCE, leeway=60,
+        )
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Session expired - please sign in again.")
     except jwt.PyJWKClientError as exc:
