@@ -225,6 +225,10 @@ which suit a stateless, short-lived function well. Deploy them separately:
 
 ### Backend → any host that runs a long-lived process (Render, Railway, Fly.io, a VPS, ...)
 
+`render.yaml` at the repo root is a Render Blueprint — "New -> Blueprint" in Render picks it up
+automatically and pre-fills the build/start commands and env var names (you still enter the
+actual secret values yourself; none are stored in the file). On any host:
+
 1. Provision a **real Postgres** database (Supabase's own Postgres works, or the host's
    managed Postgres) — SQLite's on-disk file won't survive most hosts' ephemeral filesystems.
 2. Set `DATABASE_URL` to that Postgres URL, and set the rest from `backend/.env.example`:
@@ -233,9 +237,14 @@ which suit a stateless, short-lived function well. Deploy them separately:
    - `PUBLIC_BASE_URL` — your deployed frontend's URL, so PDF reports link somewhere real.
    - `SUPABASE_JWT_SECRET` or `SUPABASE_URL` — same Supabase project as the frontend, if using auth.
 3. Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`.
-4. Run `python -m scripts.seed_data` once (from a shell on that host, against that database) to
-   load demo data and train the anomaly model — or point `DATABASE_URL` at a database you've
-   already seeded elsewhere.
+4. Bootstrap the first `registry_admin`: sign up for a real account on the deployed frontend,
+   then from your own machine, temporarily point `backend/.env`'s `DATABASE_URL` at the same
+   production Postgres and run `python -m scripts.promote_admin --email you@example.com` — it
+   writes directly to the database, no running server needed.
+5. Seed demo data: with `DATABASE_URL` still pointed at production but `SUPABASE_URL` /
+   `SUPABASE_JWT_SECRET` left blank *locally* (so your local server skips login), run the
+   backend locally and `python -m scripts.seed_data` against it — it posts to your local
+   `:8000`, which writes into the shared production database.
 
 ## Working on this repo
 

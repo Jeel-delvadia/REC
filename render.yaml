@@ -1,0 +1,33 @@
+# Render Blueprint - lets you deploy the backend via Render's "New -> Blueprint" flow instead
+# of filling in build/start commands and env var names by hand. Render looks for this file at
+# the repository root automatically.
+#
+# Secrets are intentionally left out (`sync: false` means "set this in Render's dashboard,
+# never store it here") - never commit a real DATABASE_URL, Supabase key, or LLM key.
+# See backend/.env.example for what each variable does.
+services:
+  - type: web
+    name: recshield-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.0
+      - key: DATABASE_URL
+        sync: false # Supabase Postgres connection string, postgresql+psycopg://...
+      - key: CORS_ORIGINS
+        sync: false # e.g. ["https://your-app.vercel.app"] - the deployed frontend's origin
+      - key: PUBLIC_BASE_URL
+        sync: false # e.g. https://your-app.vercel.app - where PDF report links point
+      - key: SUPABASE_URL
+        sync: false # same Supabase project as the frontend's VITE_SUPABASE_URL
+      - key: SUPABASE_JWT_SECRET
+        sync: false # optional alternative to SUPABASE_URL - see .env.example
+      - key: LLM_API_KEY
+        sync: false # optional - falls back to a template explanation without it
+      - key: LLM_MODEL
+        value: claude-opus-5
