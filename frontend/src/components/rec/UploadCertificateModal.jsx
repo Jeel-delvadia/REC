@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { X, Upload, PlusCircle, Building, Calendar, Zap, User, FileText, CheckCircle, RefreshCw, AlertTriangle, ShieldCheck, FileSpreadsheet } from 'lucide-react';
 import { fetchPlants, createRec } from '../../api/client';
 
@@ -144,14 +145,19 @@ export default function UploadCertificateModal({ onClose, onSuccess }) {
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
-      <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-modal-enter">
-        
+  // Portaled to document.body: mounted from Header (and also from RecExplorerPage), a
+  // position:fixed modal must not depend on an ancestor's styling. Header's own backdrop-blur
+  // used to make it the containing block for this modal's `fixed inset-0`, trapping the
+  // overlay inside the header's thin strip instead of covering the viewport - the bug this
+  // fixes. Portaling here means the fix holds regardless of what mounts the modal.
+  return ReactDOM.createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm overflow-y-auto">
+      <div className="relative w-full max-w-2xl bg-[#10151f] border border-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col animate-modal-enter">
+
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/60">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/40">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20">
+            <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">
               <Upload className="w-5 h-5" />
             </div>
             <div>
@@ -174,7 +180,7 @@ export default function UploadCertificateModal({ onClose, onSuccess }) {
             onClick={() => setActiveTab('form')}
             className={`flex items-center gap-2 pb-2.5 text-xs font-bold border-b-2 transition-all px-2 ${
               activeTab === 'form'
-                ? 'border-sky-400 text-sky-400'
+                ? 'border-blue-400 text-blue-400'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -186,7 +192,7 @@ export default function UploadCertificateModal({ onClose, onSuccess }) {
             onClick={() => setActiveTab('csv')}
             className={`flex items-center gap-2 pb-2.5 text-xs font-bold border-b-2 transition-all px-2 ${
               activeTab === 'csv'
-                ? 'border-sky-400 text-sky-400'
+                ? 'border-blue-400 text-blue-400'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -211,7 +217,7 @@ export default function UploadCertificateModal({ onClose, onSuccess }) {
                 {/* Solar Plant Picker */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
-                    <Building className="w-3.5 h-3.5 text-sky-400" /> Solar Plant Asset *
+                    <Building className="w-3.5 h-3.5 text-blue-400" /> Solar Plant Asset *
                   </label>
                   {loadingPlants ? (
                     <div className="p-2 text-xs text-slate-500">Loading plants list...</div>
@@ -219,7 +225,7 @@ export default function UploadCertificateModal({ onClose, onSuccess }) {
                     <select
                       value={plantId}
                       onChange={(e) => setPlantId(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 focus:border-sky-500 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none"
+                      className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none"
                     >
                       {plants.map((p) => (
                         <option key={p.id} value={p.id}>
@@ -240,7 +246,7 @@ export default function UploadCertificateModal({ onClose, onSuccess }) {
                     placeholder="Auto-generated (e.g. REC-00501)"
                     value={customRecId}
                     onChange={(e) => setCustomRecId(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-sky-500 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none font-mono"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none font-mono"
                   />
                 </div>
 
@@ -253,7 +259,7 @@ export default function UploadCertificateModal({ onClose, onSuccess }) {
                     type="date"
                     value={periodStart}
                     onChange={(e) => setPeriodStart(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-sky-500 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none"
                   />
                 </div>
 
@@ -266,7 +272,7 @@ export default function UploadCertificateModal({ onClose, onSuccess }) {
                     type="date"
                     value={periodEnd}
                     onChange={(e) => setPeriodEnd(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-sky-500 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none"
                   />
                 </div>
 
@@ -282,7 +288,7 @@ export default function UploadCertificateModal({ onClose, onSuccess }) {
                     placeholder="e.g. 250.0"
                     value={energyMwh}
                     onChange={(e) => setEnergyMwh(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-sky-500 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none font-mono"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none font-mono"
                   />
                 </div>
 
@@ -296,7 +302,7 @@ export default function UploadCertificateModal({ onClose, onSuccess }) {
                     placeholder="e.g. Evergreen Energy Ltd"
                     value={holder}
                     onChange={(e) => setHolder(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 focus:border-sky-500 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none"
+                    className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none"
                   />
                 </div>
 
@@ -306,7 +312,7 @@ export default function UploadCertificateModal({ onClose, onSuccess }) {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-sky-500 to-cyan-500 hover:from-sky-400 hover:to-cyan-400 text-slate-950 font-extrabold text-xs transition-all shadow-lg shadow-sky-500/20 flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full py-3 btn-primary rounded-lg font-bold text-xs flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {submitting ? (
                     <>
@@ -325,7 +331,7 @@ export default function UploadCertificateModal({ onClose, onSuccess }) {
           ) : (
             <form onSubmit={handleCsvSubmit} className="space-y-4">
               <div className="p-4 rounded-xl border border-dashed border-slate-700 bg-slate-950/60 text-center space-y-3">
-                <FileSpreadsheet className="w-8 h-8 text-sky-400 mx-auto" />
+                <FileSpreadsheet className="w-8 h-8 text-blue-400 mx-auto" />
                 <div>
                   <p className="text-xs font-bold text-slate-200">Upload REC Telemetry CSV File</p>
                   <p className="text-[11px] text-slate-400">CSV file with columns: id, plant_id, period_start, period_end, energy_mwh, holder</p>
@@ -370,7 +376,7 @@ export default function UploadCertificateModal({ onClose, onSuccess }) {
                       <tbody className="divide-y divide-slate-800/50">
                         {csvPreview.map((row, idx) => (
                           <tr key={idx}>
-                            <td className="p-1.5 text-sky-400 font-mono">{row.plant_id}</td>
+                            <td className="p-1.5 text-blue-400 font-mono">{row.plant_id}</td>
                             <td className="p-1.5 text-slate-300">{row.period_start}</td>
                             <td className="p-1.5 text-slate-300">{row.period_end}</td>
                             <td className="p-1.5 text-amber-400 font-mono font-bold">{row.energy_mwh}</td>
@@ -386,7 +392,7 @@ export default function UploadCertificateModal({ onClose, onSuccess }) {
               <button
                 type="submit"
                 disabled={submitting || csvPreview.length === 0}
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-sky-500 to-cyan-500 hover:from-sky-400 hover:to-cyan-400 text-slate-950 font-extrabold text-xs transition-all shadow-lg shadow-sky-500/20 flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-3 btn-primary rounded-lg font-bold text-xs flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {submitting ? (
                   <>
@@ -405,6 +411,7 @@ export default function UploadCertificateModal({ onClose, onSuccess }) {
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

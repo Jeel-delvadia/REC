@@ -38,11 +38,11 @@ export default function LoginPage() {
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-sky-600 to-cyan-400 shadow-xl shadow-sky-500/20 mb-2">
-            <Shield className="w-8 h-8 text-slate-950" />
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-blue-600 mb-2">
+            <Shield className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-extrabold text-white tracking-tight">
-            REC<span className="text-sky-400">Shield</span>
+            REC<span className="text-blue-400">Shield</span>
           </h1>
           <p className="text-xs text-slate-400">Auditor sign-in</p>
         </div>
@@ -63,14 +63,14 @@ export default function LoginPage() {
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5">
-              <Mail className="w-3.5 h-3.5 text-sky-400" /> Email
+              <Mail className="w-3.5 h-3.5 text-blue-400" /> Email
             </label>
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 focus:border-sky-500 rounded-xl px-3 py-2 text-sm text-slate-200 outline-none"
+              className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-xl px-3 py-2 text-sm text-slate-200 outline-none"
               placeholder="you@example.com"
               autoComplete="email"
             />
@@ -86,7 +86,7 @@ export default function LoginPage() {
               minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 focus:border-sky-500 rounded-xl px-3 py-2 text-sm text-slate-200 outline-none"
+              className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-xl px-3 py-2 text-sm text-slate-200 outline-none"
               placeholder="••••••••"
               autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
             />
@@ -95,7 +95,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-cyan-500 hover:from-sky-400 hover:to-cyan-400 text-slate-950 font-extrabold text-sm transition-all disabled:opacity-50"
+            className="w-full py-2.5 btn-primary rounded-lg font-bold text-sm disabled:opacity-50"
           >
             {submitting ? 'Please wait...' : mode === 'signin' ? 'Sign In' : 'Create Account'}
           </button>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  X, Shield, CheckCircle, AlertTriangle, AlertCircle, Sparkles, 
+import ReactDOM from 'react-dom';
+import {
+  X, Shield, CheckCircle, AlertTriangle, AlertCircle, Sparkles,
   RotateCw, Flag, Check, ChevronDown, ChevronUp, FileText, QrCode,
   ExternalLink, Lock, History, User, Building, Calendar, Zap, Activity, Download
 } from 'lucide-react';
@@ -153,14 +154,18 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
 
   if (!recId) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
-      <div className="relative w-full max-w-4xl max-h-[90vh] bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-modal-enter">
-        
+  // Portaled to document.body for the same reason as UploadCertificateModal: this component is
+  // mounted from several places (Header, DashboardPage, RecExplorerPage), and a position:fixed
+  // modal shouldn't depend on whichever ancestor happens to render it - Header's old
+  // backdrop-blur styling trapped it via CSS's containing-block rule otherwise.
+  return ReactDOM.createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm overflow-y-auto">
+      <div className="relative w-full max-w-4xl max-h-[90vh] bg-[#10151f] border border-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col animate-modal-enter">
+
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/50">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/40">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20">
+            <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">
               <Shield className="w-6 h-6" />
             </div>
             <div>
@@ -184,7 +189,7 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
         <div className="p-6 overflow-y-auto space-y-6 flex-1">
           {loading ? (
             <div className="py-20 flex flex-col items-center justify-center text-slate-400 gap-3">
-              <RotateCw className="w-8 h-8 animate-spin text-sky-400" />
+              <RotateCw className="w-8 h-8 animate-spin text-blue-400" />
               <p className="text-sm font-medium">Analyzing REC data and running AI engine verification...</p>
             </div>
           ) : error ? (
@@ -196,7 +201,7 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
               {/* Quick Summary Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-xl bg-slate-950/60 border border-slate-800/80">
                 <div>
-                  <span className="text-[11px] text-slate-400 flex items-center gap-1 font-medium"><Building className="w-3 h-3 text-sky-400" /> Solar Plant</span>
+                  <span className="text-[11px] text-slate-400 flex items-center gap-1 font-medium"><Building className="w-3 h-3 text-blue-400" /> Solar Plant</span>
                   <p className="text-sm font-bold text-white mt-0.5 truncate">{detail.plant_name}</p>
                   <p className="text-[11px] text-slate-500 font-mono">ID: {detail.plant_id}</p>
                 </div>
@@ -225,7 +230,7 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
                   <button
                     onClick={handleRunVerify}
                     disabled={verifying}
-                    className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-sky-500/20 text-sky-300 border border-sky-500/40 hover:bg-sky-500/30 text-xs font-semibold transition-colors disabled:opacity-50"
+                    className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-blue-500/12 text-blue-300 border border-blue-500/30 hover:bg-blue-500/20 text-xs font-semibold transition-colors disabled:opacity-50"
                   >
                     <RotateCw className={`w-3.5 h-3.5 ${verifying ? 'animate-spin' : ''}`} />
                     <span>{verifying ? 'Running AI Engine...' : 'Re-Run Verification'}</span>
@@ -273,7 +278,7 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
               {/* 5-Point Verification Risk Check Matrix */}
               <div>
                 <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-sky-400" /> Verification Checks
+                  <Shield className="w-4 h-4 text-blue-400" /> Verification Checks
                 </h3>
 
                 {detail.verification ? (
@@ -314,7 +319,7 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
                                   <span className="text-amber-400">{check.reason_code}</span>
                                 </p>
                               )}
-                              <p className="text-[11px] text-sky-400 font-sans font-semibold mb-2">Underlying numbers:</p>
+                              <p className="text-[11px] text-blue-400 font-sans font-semibold mb-2">Underlying numbers:</p>
                               <pre className="p-2.5 rounded-lg bg-slate-950 overflow-x-auto text-[11px] text-slate-300">
                                 {JSON.stringify(check.details, null, 2)}
                               </pre>
@@ -333,10 +338,10 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
 
               {/* AI Narrative Explanation Box */}
               {detail.verification && detail.verification.explanation && (
-                <div className="p-4 rounded-xl bg-gradient-to-r from-sky-950/40 via-purple-950/20 to-slate-900 border border-sky-500/20">
+                <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800">
                   <div className="flex items-center gap-2 mb-2">
-                    <Sparkles className="w-4 h-4 text-sky-400" />
-                    <h4 className="text-xs font-bold text-sky-300 uppercase tracking-wider">AI Automated Audit Verdict</h4>
+                    <Sparkles className="w-4 h-4 text-blue-400" />
+                    <h4 className="text-xs font-bold text-blue-300 uppercase tracking-wider">AI Automated Audit Verdict</h4>
                     <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">Source: {detail.verification.explanation_source || 'engine'}</span>
                   </div>
                   <p className="text-xs text-slate-200 leading-relaxed font-sans">
@@ -366,7 +371,7 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
                   <label className="block text-[11px] text-slate-400 font-medium mb-1">Auditor</label>
                   {authEnabled ? (
                     <div className="w-full bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-300 font-mono flex items-center gap-1.5">
-                      <User className="w-3.5 h-3.5 text-sky-400" />
+                      <User className="w-3.5 h-3.5 text-blue-400" />
                       {user?.email || 'not signed in'}
                     </div>
                   ) : (
@@ -374,7 +379,7 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
                       type="text"
                       value={auditorName}
                       onChange={(e) => setAuditorName(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-800 focus:border-sky-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none"
+                      className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none"
                       placeholder="Enter name"
                     />
                   )}
@@ -388,7 +393,7 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
                     value={actionNote}
                     onChange={(e) => setActionNote(e.target.value)}
                     rows={2}
-                    className="w-full bg-slate-900 border border-slate-800 focus:border-sky-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none resize-none"
+                    className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none resize-none"
                     placeholder="What did you find? What evidence backs this decision?"
                   />
                 </div>
@@ -407,7 +412,7 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
                   <button
                     onClick={() => handleAuditSubmit('request_verification')}
                     disabled={!!submittingAction}
-                    className="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-sky-500/20 text-sky-300 border border-sky-500/30 hover:bg-sky-500/30 text-xs font-bold transition-colors disabled:opacity-50"
+                    className="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-blue-500/12 text-blue-300 border border-blue-500/30 hover:bg-blue-500/20 text-xs font-bold transition-colors disabled:opacity-50"
                   >
                     <RotateCw className="w-4 h-4" />
                     <span>{submittingAction === 'request_verification' ? 'Submitting...' : 'Request Verification'}</span>
@@ -443,7 +448,7 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
                     {detail.actions.map((act) => (
                       <div key={act.id} className="p-3 rounded-lg bg-slate-950 border border-slate-800 text-xs flex items-center justify-between">
                         <div>
-                          <span className="font-semibold text-slate-200 capitalize">{act.action}</span> by <span className="text-sky-400">{act.auditor}</span>
+                          <span className="font-semibold text-slate-200 capitalize">{act.action}</span> by <span className="text-blue-400">{act.auditor}</span>
                           {act.note && <p className="text-slate-400 text-[11px] mt-0.5">{act.note}</p>}
                         </div>
                         <span className="text-[10px] font-mono text-slate-500">{new Date(act.created_at).toLocaleString()}</span>
@@ -484,6 +489,7 @@ export default function RecDetailModal({ recId, onClose, onActionSuccess }) {
           </div>
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }

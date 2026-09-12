@@ -1,20 +1,28 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
+/* Design tokens - restrained enterprise/compliance palette (Stripe Radar / Unit21 style):
+   one controlled accent, solid surfaces instead of glassmorphism, semantic color reserved
+   for risk state only. Frontend-only change - nothing here touches API calls or auth. */
 :root {
-  --bg-main: #060b13;
+  --bg-main: #0a0e16;
+  --surface: #10151f;
+  --surface-raised: #141b28;
+  --border-subtle: rgba(148, 163, 184, 0.14);
+  --border-strong: rgba(148, 163, 184, 0.24);
+  --accent: #3b82f6;
+  --accent-strong: #2563eb;
 }
 
 body {
-  background-color: #060b13;
-  color: #f8fafc;
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--bg-main);
+  color: #f1f5f9;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   min-height: 100vh;
   overflow-x: hidden;
-  background-image: 
-    radial-gradient(at 15% 15%, rgba(14, 165, 233, 0.12) 0px, transparent 50%),
-    radial-gradient(at 85% 85%, rgba(168, 85, 247, 0.1) 0px, transparent 50%),
-    radial-gradient(at 50% 50%, rgba(16, 185, 129, 0.06) 0px, transparent 50%);
+  /* A single, faint gradient instead of three overlapping neon ones - enough to keep the dark
+     UI from feeling flat without reading as a marketing/crypto hero. */
+  background-image: radial-gradient(at 50% 0%, rgba(59, 130, 246, 0.07) 0px, transparent 60%);
   background-attachment: fixed;
 }
 
@@ -22,14 +30,14 @@ code, pre, .font-mono {
   font-family: 'JetBrains Mono', monospace;
 }
 
-/* Glassmorphism panel */
+/* Solid enterprise card - replaces the earlier backdrop-blur glass panel, which read more
+   consumer/crypto than compliance tooling. Also sidesteps backdrop-filter's containing-block
+   effect on position:fixed descendants (the modal popup bug). */
 .glass-panel {
-  background: rgba(15, 23, 42, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 1rem;
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .glass-card-glow {
@@ -44,34 +52,53 @@ code, pre, .font-mono {
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, #0ea5e9, transparent);
-  opacity: 0.8;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.45;
 }
 
-/* Risk Badges - report §6 band names: genuine / suspicious / high_risk / likely_fraud */
+/* Risk Badges - report §6 band names: genuine / suspicious / high_risk / likely_fraud.
+   Flat semantic chips, no glow - severity reads from color + label, not decoration. */
 .badge-genuine {
-  background-color: rgba(16, 185, 129, 0.15);
+  background-color: rgba(16, 185, 129, 0.12);
   color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  border: 1px solid rgba(16, 185, 129, 0.28);
 }
 
 .badge-suspicious {
-  background-color: rgba(245, 158, 11, 0.15);
+  background-color: rgba(245, 158, 11, 0.12);
   color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  border: 1px solid rgba(245, 158, 11, 0.28);
 }
 
 .badge-high_risk {
-  background-color: rgba(244, 63, 94, 0.15);
+  background-color: rgba(244, 63, 94, 0.12);
   color: #fb7185;
-  border: 1px solid rgba(244, 63, 94, 0.3);
+  border: 1px solid rgba(244, 63, 94, 0.28);
 }
 
 .badge-likely_fraud {
-  background-color: rgba(168, 85, 247, 0.2);
+  background-color: rgba(168, 85, 247, 0.14);
   color: #c084fc;
-  border: 1px solid rgba(168, 85, 247, 0.4);
-  box-shadow: 0 0 12px rgba(168, 85, 247, 0.3);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+/* Primary/secondary action buttons - solid fills instead of the earlier sky-to-cyan gradients,
+   matching how Stripe/Unit21-style compliance dashboards treat primary actions. */
+.btn-primary {
+  background-color: var(--accent);
+  color: #ffffff;
+  transition: background-color 0.15s ease;
+}
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--accent-strong);
+}
+
+@keyframes modal-enter {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-modal-enter {
+  animation: modal-enter 0.18s ease-out;
 }
 
 /* Custom Scrollbars */

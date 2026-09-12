@@ -22,7 +22,7 @@ function BaseNode({ data, tone, children }) {
 }
 
 const PlantNode = ({ data }) => (
-  <BaseNode data={{ ...data, kind: 'Plant' }} tone="bg-sky-500/10 border-sky-500/40" />
+  <BaseNode data={{ ...data, kind: 'Plant' }} tone="bg-blue-500/10 border-blue-500/40" />
 );
 
 const RecNode = ({ data }) => {
@@ -166,7 +166,7 @@ export default function ProvenanceGraphPage() {
       <div className="glass-panel p-4 flex flex-wrap items-center justify-between gap-4 text-xs">
         <div className="flex flex-wrap items-center gap-6">
           <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-sky-500/20 border border-sky-400" />
+            <span className="w-3 h-3 rounded-full bg-blue-500/20 border border-blue-400" />
             <span className="text-slate-300 font-medium">Solar Plant Node</span>
           </div>
           <div className="flex items-center gap-2">
@@ -245,7 +245,7 @@ export default function ProvenanceGraphPage() {
               <tbody className="divide-y divide-slate-800/60">
                 {graphData.edges.map((e, idx) => (
                   <tr key={idx} className="hover:bg-slate-800/40">
-                    <td className="py-3 px-3 font-mono font-bold text-sky-400">{e.rec_id || 'N/A'}</td>
+                    <td className="py-3 px-3 font-mono font-bold text-blue-400">{e.rec_id || 'N/A'}</td>
                     <td className="py-3 px-3 text-slate-300">{STRIP(e.source)}</td>
                     <td className="py-3 px-3 text-purple-300 font-semibold">{STRIP(e.target)}</td>
                     <td className="py-3 px-3 capitalize font-mono text-slate-400">{e.type}</td>

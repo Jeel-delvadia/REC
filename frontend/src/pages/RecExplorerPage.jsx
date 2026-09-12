@@ -96,7 +96,7 @@ export default function RecExplorerPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-3">
-            <Database className="w-6 h-6 text-sky-400" />
+            <Database className="w-6 h-6 text-blue-400" />
             <span>Renewable Energy Certificate Registry Explorer</span>
           </h1>
           <p className="text-xs text-slate-400 mt-1">
@@ -107,7 +107,7 @@ export default function RecExplorerPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowUploadModal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-cyan-500 hover:from-sky-400 hover:to-cyan-400 text-slate-950 font-extrabold text-xs shadow-lg shadow-sky-500/20 transition-all"
+            className="btn-primary flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-colors"
           >
             <PlusCircle className="w-4 h-4" />
             <span>Upload / Issue Certificate</span>
@@ -125,7 +125,7 @@ export default function RecExplorerPage() {
               placeholder="REC ID, plant, holder..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 focus:border-sky-500 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 outline-none"
+              className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 outline-none"
             />
             <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
           </div>
@@ -136,7 +136,7 @@ export default function RecExplorerPage() {
           <select
             value={band}
             onChange={(e) => setBand(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 focus:border-sky-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none capitalize"
+            className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none capitalize"
           >
             <option value="">All Risk Bands</option>
             <option value="genuine">Genuine (0-30)</option>
@@ -151,7 +151,7 @@ export default function RecExplorerPage() {
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 focus:border-sky-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none capitalize"
+            className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none capitalize"
           >
             <option value="">All Statuses</option>
             <option value="pending">Pending</option>
@@ -170,7 +170,7 @@ export default function RecExplorerPage() {
             placeholder="e.g. 50"
             value={minScore}
             onChange={(e) => setMinScore(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 focus:border-sky-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none font-mono"
+            className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none font-mono"
           />
         </div>
 
@@ -180,7 +180,7 @@ export default function RecExplorerPage() {
             type="date"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 focus:border-sky-500 rounded-lg px-2 py-1.5 text-xs text-slate-200 outline-none"
+            className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-lg px-2 py-1.5 text-xs text-slate-200 outline-none"
           />
         </div>
 
@@ -190,14 +190,14 @@ export default function RecExplorerPage() {
             type="date"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 focus:border-sky-500 rounded-lg px-2 py-1.5 text-xs text-slate-200 outline-none"
+            className="w-full bg-slate-900 border border-slate-800 focus:border-blue-500 rounded-lg px-2 py-1.5 text-xs text-slate-200 outline-none"
           />
         </div>
 
         <div className="flex items-center gap-2 sm:col-span-2 md:col-span-1 xl:col-span-7">
           <button
             type="submit"
-            className="flex-1 py-1.5 px-3 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs transition-colors"
+            className="flex-1 py-1.5 px-3 btn-primary rounded-lg font-bold text-xs"
           >
             Apply Filters
           </button>
@@ -215,7 +215,7 @@ export default function RecExplorerPage() {
       <div className="glass-panel overflow-hidden">
         {loading ? (
           <div className="py-20 flex flex-col items-center justify-center text-slate-400 gap-3">
-            <RefreshCw className="w-8 h-8 animate-spin text-sky-400" />
+            <RefreshCw className="w-8 h-8 animate-spin text-blue-400" />
             <p className="text-sm font-semibold">Querying certificates database...</p>
           </div>
         ) : recs.length === 0 ? (
@@ -226,7 +226,7 @@ export default function RecExplorerPage() {
               <button onClick={handleResetFilters} className="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold">
                 Clear All Filters
               </button>
-              <button onClick={() => setShowUploadModal(true)} className="px-4 py-1.5 rounded-lg bg-sky-500/20 text-sky-300 text-xs font-bold border border-sky-500/30">
+              <button onClick={() => setShowUploadModal(true)} className="px-4 py-1.5 rounded-lg bg-blue-500/20 text-blue-300 text-xs font-bold border border-blue-500/30">
                 Upload New Certificate
               </button>
             </div>
@@ -249,7 +249,7 @@ export default function RecExplorerPage() {
               <tbody className="divide-y divide-slate-800/60">
                 {recs.map((rec) => (
                   <tr key={rec.id} className="hover:bg-slate-800/40 transition-colors group">
-                    <td className="py-3.5 px-4 font-mono font-bold text-sky-400">{rec.id}</td>
+                    <td className="py-3.5 px-4 font-mono font-bold text-blue-400">{rec.id}</td>
                     <td className="py-3.5 px-4">
                       <div className="font-semibold text-slate-200">{rec.plant_name}</div>
                       <div className="text-[10px] text-slate-500 font-mono">ID: {rec.plant_id}</div>
@@ -274,7 +274,7 @@ export default function RecExplorerPage() {
                     <td className="py-3.5 px-4 text-right">
                       <button
                         onClick={() => setSelectedRecId(rec.id)}
-                        className="px-3.5 py-1.5 rounded-lg bg-sky-500/15 hover:bg-sky-500/30 text-sky-300 border border-sky-500/30 text-xs font-bold transition-all shadow-sm group-hover:border-sky-400"
+                        className="px-3.5 py-1.5 rounded-lg bg-blue-500/15 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 text-xs font-bold transition-all shadow-sm group-hover:border-blue-400"
                       >
                         Inspect Audit
                       </button>

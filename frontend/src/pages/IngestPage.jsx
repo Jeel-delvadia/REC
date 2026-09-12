@@ -29,7 +29,7 @@ export default function IngestPage() {
       {/* Title Header */}
       <div>
         <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-3">
-          <RefreshCw className="w-6 h-6 text-sky-400" />
+          <RefreshCw className="w-6 h-6 text-blue-400" />
           <span>Data Management & Telemetry Ingestion Hub</span>
         </h1>
         <p className="text-xs text-slate-400 mt-1">
@@ -49,7 +49,7 @@ export default function IngestPage() {
               type="checkbox"
               checked={reset}
               onChange={(e) => setReset(e.target.checked)}
-              className="w-4 h-4 rounded bg-slate-900 border-slate-700 text-sky-500 focus:ring-sky-500"
+              className="w-4 h-4 rounded bg-slate-900 border-slate-700 text-blue-500 focus:ring-blue-500"
             />
             <div>
               <span className="text-xs font-bold text-slate-200 block">Reset & Wipe Database Tables</span>
@@ -62,7 +62,7 @@ export default function IngestPage() {
               type="checkbox"
               checked={verify}
               onChange={(e) => setVerify(e.target.checked)}
-              className="w-4 h-4 rounded bg-slate-900 border-slate-700 text-sky-500 focus:ring-sky-500"
+              className="w-4 h-4 rounded bg-slate-900 border-slate-700 text-blue-500 focus:ring-blue-500"
             />
             <div>
               <span className="text-xs font-bold text-slate-200 block">Automated AI Batch Verification</span>
@@ -74,7 +74,7 @@ export default function IngestPage() {
         <button
           onClick={handleIngest}
           disabled={running}
-          className="w-full py-3 rounded-xl bg-gradient-to-r from-sky-500 to-cyan-500 hover:from-sky-400 hover:to-cyan-400 text-slate-950 font-extrabold text-xs transition-all shadow-lg shadow-sky-500/20 flex items-center justify-center gap-2 disabled:opacity-50"
+          className="w-full py-3 btn-primary rounded-lg font-bold text-xs flex items-center justify-center gap-2 disabled:opacity-50"
         >
           {running ? (
             <>
@@ -96,8 +96,8 @@ export default function IngestPage() {
               <CheckCircle className="w-4 h-4" /> Data Ingestion Completed Successfully!
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 font-mono pt-2 text-slate-200">
-              <div>Plants: <span className="text-sky-400 font-bold">{result.plants}</span></div>
-              <div>Meter Days: <span className="text-sky-400 font-bold">{result.generation}</span></div>
+              <div>Plants: <span className="text-blue-400 font-bold">{result.plants}</span></div>
+              <div>Meter Days: <span className="text-blue-400 font-bold">{result.generation}</span></div>
               <div>RECs: <span className="text-amber-400 font-bold">{result.recs}</span></div>
               <div>Transfers: <span className="text-purple-400 font-bold">{result.transactions}</span></div>
               <div>Verified: <span className="text-emerald-400 font-bold">{result.verified}</span></div>

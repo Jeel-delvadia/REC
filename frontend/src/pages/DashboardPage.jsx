@@ -89,7 +89,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center gap-3 text-slate-400">
-        <RefreshCw className="w-8 h-8 animate-spin text-sky-400" />
+        <RefreshCw className="w-8 h-8 animate-spin text-blue-400" />
         <p className="text-sm font-semibold">Gathering solar grid telemetry & fraud detection summary...</p>
       </div>
     );
@@ -133,7 +133,7 @@ export default function DashboardPage() {
             onClick={loadDashboardData}
             className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 text-xs font-semibold transition-colors"
           >
-            <RefreshCw className="w-3.5 h-3.5 text-sky-400" />
+            <RefreshCw className="w-3.5 h-3.5 text-blue-400" />
             <span>Refresh Telemetry</span>
           </button>
         </div>
@@ -144,7 +144,7 @@ export default function DashboardPage() {
         <div className="glass-panel p-5 glass-card-glow">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total RECs</span>
-            <div className="p-2 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20">
+            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
               <Database className="w-5 h-5" />
             </div>
           </div>
@@ -223,7 +223,7 @@ export default function DashboardPage() {
             <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Risk Score Distribution</h2>
             <p className="text-xs text-slate-400">Certificates evaluated across 5 engine vectors</p>
           </div>
-          <Link to="/recs" className="text-xs text-sky-400 hover:text-sky-300 font-semibold flex items-center gap-1">
+          <Link to="/recs" className="text-xs text-blue-400 hover:text-blue-300 font-semibold flex items-center gap-1">
             View All RECs <ChevronRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -292,7 +292,7 @@ export default function DashboardPage() {
               </h2>
               <p className="text-xs text-slate-400">Ranked by risk score - Likely Fraud RECs first, ready to investigate</p>
             </div>
-            <Link to="/recs?band=likely_fraud" className="text-xs text-sky-400 hover:text-sky-300 font-semibold flex items-center gap-1">
+            <Link to="/recs?band=likely_fraud" className="text-xs text-blue-400 hover:text-blue-300 font-semibold flex items-center gap-1">
               View Fraud Queue <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -311,7 +311,7 @@ export default function DashboardPage() {
               <tbody className="divide-y divide-slate-800/60">
                 {highRiskList.map((rec) => (
                   <tr key={rec.id} className="hover:bg-slate-800/50 transition-colors">
-                    <td className="py-3 px-3 font-mono font-bold text-sky-400">{rec.id}</td>
+                    <td className="py-3 px-3 font-mono font-bold text-blue-400">{rec.id}</td>
                     <td className="py-3 px-3 font-medium text-slate-200">{rec.plant_name}</td>
                     <td className="py-3 px-3 font-mono text-amber-400 font-bold">{rec.energy_mwh.toLocaleString()}</td>
                     <td className="py-3 px-3">
@@ -326,7 +326,7 @@ export default function DashboardPage() {
                         className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
                           rec.risk_band === 'likely_fraud'
                             ? 'bg-rose-500/20 text-rose-300 hover:bg-rose-500/30'
-                            : 'bg-sky-500/20 text-sky-300 hover:bg-sky-500/30'
+                            : 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30'
                         }`}
                       >
                         {rec.risk_band === 'likely_fraud' ? 'Investigate' : 'Review'}
@@ -357,7 +357,7 @@ export default function DashboardPage() {
                   className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-amber-500/40 cursor-pointer transition-all space-y-1"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs font-bold text-sky-400">{alt.rec_id}</span>
+                    <span className="font-mono text-xs font-bold text-blue-400">{alt.rec_id}</span>
                     <span className={`text-[10px] uppercase px-2 py-0.5 rounded font-semibold ${
                       alt.severity === 'likely_fraud' || alt.severity === 'ledger_integrity' ? 'bg-rose-500/20 text-rose-300' : 'bg-amber-500/20 text-amber-300'
                     }`}>

@@ -84,12 +84,12 @@ export default function LedgerPage() {
       {/* SHA-256 Explanation Info */}
       <div className="glass-panel p-6 space-y-4">
         <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
-          <Hash className="w-4 h-4 text-sky-400" /> How Cryptographic Audit Protection Works
+          <Hash className="w-4 h-4 text-blue-400" /> How Cryptographic Audit Protection Works
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-300">
           <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1">
-            <span className="font-bold text-sky-400 font-mono">1. SHA-256 Digesting</span>
+            <span className="font-bold text-blue-400 font-mono">1. SHA-256 Digesting</span>
             <p className="text-slate-400">Each event payload (issuance, transfer, verification) is serialized and hashed deterministically.</p>
           </div>
 

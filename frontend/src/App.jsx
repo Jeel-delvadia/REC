@@ -20,7 +20,7 @@ function AuditorGate({ children }) {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400 gap-3">
-        <RefreshCw className="w-6 h-6 animate-spin text-sky-400" />
+        <RefreshCw className="w-6 h-6 animate-spin text-blue-400" />
         <span className="text-sm">Checking session...</span>
       </div>
     );
