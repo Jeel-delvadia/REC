@@ -7,7 +7,7 @@ import csv
 from pathlib import Path
 
 from pydantic import ValidationError
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -15,16 +15,19 @@ from app.core.database import utcnow
 from app.engines import data_quality
 from app.engines.duplicate import fingerprint as compute_fingerprint
 from app.models import (
-    Alert, AuditAction, DataQualityReport, Generation, LedgerEntry, Meter, Plant, Rec, Transaction,
-    VerificationResult,
+    Alert, AuditAction, DataQualityReport, Generation, LedgerEntry, Meter, Plant, PurchaseRequest, Rec,
+    Transaction, UserProfile, VerificationResult,
 )
 from app.schemas.ingest_rows import GenerationRow, MeterRow, PlantRow, RecRow, TransactionRow
 from app.services import NotFoundError, audit_service, verification_service
 
 FILES = ("plants.csv", "generation.csv", "recs.csv", "transactions.csv")
 OPTIONAL_FILES = ("meters.csv",)  # RS-02: if absent, one default meter per plant is provisioned
-# Children before parents, so foreign keys never block the wipe.
-RESET_ORDER = (Alert, AuditAction, VerificationResult, Transaction, LedgerEntry, Rec, Generation, Meter, Plant)
+# Children before parents, so foreign keys never block the wipe. PurchaseRequest.rec_id points
+# at the exact REC being wiped, so it goes here too - a request about a certificate that no
+# longer exists doesn't mean anything. UserProfile is deliberately NOT here: it's a real signed-
+# in account, not demo data, and must survive a reset - see the plant_id clear below instead.
+RESET_ORDER = (Alert, AuditAction, VerificationResult, PurchaseRequest, Transaction, LedgerEntry, Rec, Generation, Meter, Plant)
 
 
 def _default_meter_id(plant_id: str) -> str:
@@ -58,6 +61,11 @@ def load_csv_data(db: Session, *, reset: bool = True, verify: bool = True, direc
         )
 
     if reset:
+        # RS-21: a plant_operator account's plant_id is just a scoping pointer, not demo data -
+        # clear it before wiping plants so a real signed-in user's row (and role) survives a
+        # reset instead of tripping the same FK constraint. Left unset until an admin re-links
+        # the account to whichever plant ID the fresh CSVs assign it.
+        db.execute(update(UserProfile).values(plant_id=None))
         for model in RESET_ORDER:
             db.execute(delete(model))
 
