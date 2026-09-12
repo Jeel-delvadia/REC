@@ -13,5 +13,11 @@ __pycache__/
 venv/
 .pytest_cache/
 
+# local databases (regenerate with: python -m scripts.seed_data)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
 # generated model artifacts
 backend/ml/artifacts/*.joblib
