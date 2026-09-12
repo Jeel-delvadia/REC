@@ -1,17 +1,36 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  ShieldAlert, ShieldCheck, Zap, AlertTriangle, Lock, RefreshCw, 
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  ShieldAlert, ShieldCheck, Zap, AlertTriangle, Lock, RefreshCw,
   ChevronRight, Database, CheckCircle, AlertCircle
 } from 'lucide-react';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { fetchDashboardSummary, fetchAlerts, fetchRecs, verifyLedgerIntegrity } from '../api/client';
 import { Link } from 'react-router-dom';
 import RecDetailModal from '../components/rec/RecDetailModal';
+
+// Report §6 band colors, kept consistent with index.css's badge-* classes and the segmented bar below.
+const BAND_COLOR = { genuine: '#10b981', suspicious: '#f59e0b', high_risk: '#f43f5e', likely_fraud: '#a855f7' };
+
+function monthlyBandTrend(recs) {
+  const byMonth = new Map();
+  recs.forEach((r) => {
+    if (!r.period_start) return;
+    const key = r.period_start.slice(0, 7); // "2026-04"
+    if (!byMonth.has(key)) byMonth.set(key, { month: key, genuine: 0, suspicious: 0, high_risk: 0, likely_fraud: 0 });
+    const bucket = byMonth.get(key);
+    if (r.risk_band && bucket[r.risk_band] !== undefined) bucket[r.risk_band]++;
+  });
+  return [...byMonth.values()]
+    .sort((a, b) => a.month.localeCompare(b.month))
+    .map((b) => ({ ...b, month: new Date(`${b.month}-01`).toLocaleDateString(undefined, { month: 'short', year: '2-digit' }) }));
+}
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [ledgerValid, setLedgerValid] = useState(true);
   const [riskDistribution, setRiskDistribution] = useState({ genuine: 0, suspicious: 0, high_risk: 0, likely_fraud: 0 });
+  const [recentRecs, setRecentRecs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedRecId, setSelectedRecId] = useState(null);
@@ -19,6 +38,8 @@ export default function DashboardPage() {
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  const trendData = useMemo(() => monthlyBandTrend(recentRecs), [recentRecs]);
 
   const loadDashboardData = async () => {
     try {
@@ -35,6 +56,7 @@ export default function DashboardPage() {
       setSummary(sumData);
       setAlerts(alertData);
       setLedgerValid(ledgerData.valid);
+      setRecentRecs(recsPage?.items || []);
 
       // Compute exact Risk Distribution from fetched RECs
       const counts = { genuine: 0, suspicious: 0, high_risk: 0, likely_fraud: 0 };
@@ -99,7 +121,7 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-3">
-            <span>REC Audit Intelligence & Fraud Overview</span>
+            <span>RECShield &middot; AI-Powered REC Fraud Detection</span>
           </h1>
           <p className="text-xs text-slate-400 mt-1">
             Real-time monitoring of physics plausibility, double counting, meter anomalies & wash trading.
@@ -117,13 +139,11 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Metric Cards Grid */}
+      {/* KPI Cards - report Figure 4: Total / Verified / Suspicious / Fraudulent */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        
-        {/* Card 1: Total Energy & RECs */}
         <div className="glass-panel p-5 glass-card-glow">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Certified RECs</span>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total RECs</span>
             <div className="p-2 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20">
               <Database className="w-5 h-5" />
             </div>
@@ -136,56 +156,63 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Card 2: High Risk */}
         <div className="glass-panel p-5 glass-card-glow">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">High Risk Certificates</span>
-            <div className="p-2 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20">
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Verified</span>
+            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <CheckCircle className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-4">
+            <div className="text-2xl font-extrabold text-emerald-400 font-mono">{dist.genuine.toLocaleString()}</div>
+            <p className="text-xs text-slate-400 mt-1">Genuine / Low Risk (0-30)</p>
+          </div>
+        </div>
+
+        <div className="glass-panel p-5 glass-card-glow">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Suspicious</span>
+            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              <AlertCircle className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="mt-4">
+            <div className="text-2xl font-extrabold text-amber-400 font-mono">{(dist.suspicious + dist.high_risk).toLocaleString()}</div>
+            <p className="text-xs text-slate-400 mt-1">Suspicious + High Risk (31-80) &middot; [Review]</p>
+          </div>
+        </div>
+
+        <div className="glass-panel p-5 glass-card-glow">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Fraudulent</span>
+            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
               <ShieldAlert className="w-5 h-5" />
             </div>
           </div>
           <div className="mt-4">
-            <div className="text-2xl font-extrabold text-rose-400 font-mono">
-              {stats.high_risk || 0} <span className="text-xs text-slate-400 font-normal">/ {stats.verified || 0} verified</span>
-            </div>
-            <p className="text-xs text-slate-400 mt-1">
-              {(((stats.high_risk || 0) / (stats.total_recs || 1)) * 100).toFixed(1)}% of total registry certificates
-            </p>
+            <div className="text-2xl font-extrabold text-purple-400 font-mono">{dist.likely_fraud.toLocaleString()}</div>
+            <p className="text-xs text-slate-400 mt-1">Likely Fraud (81-100) &middot; [Investigate]</p>
           </div>
         </div>
+      </div>
 
-        {/* Card 3: Security Alerts */}
-        <div className="glass-panel p-5 glass-card-glow">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Fraud Alerts</span>
-            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
-              <AlertTriangle className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <div className="text-2xl font-extrabold text-amber-400 font-mono">{stats.open_alerts || 0}</div>
-            <p className="text-xs text-slate-400 mt-1">
-              Requires immediate auditor review
-            </p>
-          </div>
+      {/* Secondary status row: alerts + ledger integrity aren't part of Figure 4's 4 KPIs, but
+          they're too load-bearing to bury - open alerts feed the queue below, and a broken
+          ledger overrides every score to Likely Fraud (RS-07). */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div className="glass-panel px-5 py-3 flex items-center justify-between">
+          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-400" /> Open Alerts
+          </span>
+          <span className="text-lg font-extrabold text-amber-400 font-mono">{stats.open_alerts || 0}</span>
         </div>
-
-        {/* Card 4: Cryptographic Ledger */}
-        <div className="glass-panel p-5 glass-card-glow">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">SHA-256 Hash Chain</span>
-            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
-              <Lock className="w-5 h-5" />
-            </div>
-          </div>
-          <div className="mt-4">
-            <div className={`text-xl font-bold font-mono ${ledgerValid ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {ledgerValid ? 'SECURE & VALID' : 'TAMPER DETECTED'}
-            </div>
-            <p className="text-xs text-slate-400 mt-1">
-              Cryptographic history unbroken
-            </p>
-          </div>
+        <div className="glass-panel px-5 py-3 flex items-center justify-between">
+          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+            <Lock className="w-4 h-4 text-purple-400" /> SHA-256 Ledger
+          </span>
+          <span className={`text-xs font-extrabold font-mono ${ledgerValid ? 'text-emerald-400' : 'text-rose-400'}`}>
+            {ledgerValid ? 'INTACT' : 'TAMPER DETECTED'}
+          </span>
         </div>
       </div>
 
@@ -230,6 +257,29 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Trend: RECs per risk band by generation-period month */}
+      {trendData.length > 1 && (
+        <div className="glass-panel p-6">
+          <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider mb-4">Risk Bands Over Time</h2>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={trendData} barSize={22}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+              <XAxis dataKey="month" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={{ stroke: '#334155' }} tickLine={false} />
+              <YAxis allowDecimals={false} tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={{ stroke: '#334155' }} tickLine={false} />
+              <Tooltip
+                contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8, fontSize: 12 }}
+                labelStyle={{ color: '#e2e8f0' }}
+              />
+              <Legend wrapperStyle={{ fontSize: 11 }} formatter={(v) => v.replace('_', ' ')} />
+              <Bar dataKey="genuine" stackId="band" fill={BAND_COLOR.genuine} name="Genuine" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="suspicious" stackId="band" fill={BAND_COLOR.suspicious} name="Suspicious" />
+              <Bar dataKey="high_risk" stackId="band" fill={BAND_COLOR.high_risk} name="High Risk" />
+              <Bar dataKey="likely_fraud" stackId="band" fill={BAND_COLOR.likely_fraud} name="Likely Fraud" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
       {/* Split Section: Priority High Risk RECs & Security Alerts Feed */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
@@ -238,12 +288,12 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-rose-400" /> Priority High-Risk Audit Queue
+                <AlertTriangle className="w-4 h-4 text-rose-400" /> Priority Audit Queue
               </h2>
-              <p className="text-xs text-slate-400">Click any REC for 5-point physics, double-counting & AI report inspection</p>
+              <p className="text-xs text-slate-400">Ranked by risk score - Likely Fraud RECs first, ready to investigate</p>
             </div>
-            <Link to="/recs?band=high" className="text-xs text-sky-400 hover:text-sky-300 font-semibold flex items-center gap-1">
-              Filter High Risk <ChevronRight className="w-3.5 h-3.5" />
+            <Link to="/recs?band=likely_fraud" className="text-xs text-sky-400 hover:text-sky-300 font-semibold flex items-center gap-1">
+              View Fraud Queue <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
@@ -266,15 +316,20 @@ export default function DashboardPage() {
                     <td className="py-3 px-3 font-mono text-amber-400 font-bold">{rec.energy_mwh.toLocaleString()}</td>
                     <td className="py-3 px-3">
                       <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase ${getBadgeClass(rec.risk_band)}`}>
-                        {rec.risk_band} ({rec.risk_score})
+                        {rec.risk_band.replace('_', ' ')} ({rec.risk_score})
                       </span>
                     </td>
                     <td className="py-3 px-3 text-right">
+                      {/* Report Figure 4: [Investigate] for Likely Fraud, [Review] for High Risk/Suspicious */}
                       <button
                         onClick={() => setSelectedRecId(rec.id)}
-                        className="px-3 py-1 rounded-lg bg-sky-500/20 text-sky-300 hover:bg-sky-500/30 text-xs font-semibold transition-colors"
+                        className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                          rec.risk_band === 'likely_fraud'
+                            ? 'bg-rose-500/20 text-rose-300 hover:bg-rose-500/30'
+                            : 'bg-sky-500/20 text-sky-300 hover:bg-sky-500/30'
+                        }`}
                       >
-                        Inspect Audit
+                        {rec.risk_band === 'likely_fraud' ? 'Investigate' : 'Review'}
                       </button>
                     </td>
                   </tr>

@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
@@ -12,6 +14,8 @@ router = APIRouter(prefix="/recs", tags=["recs"])
 @router.get("", response_model=RecPage)
 def list_recs(
     search: str | None = None,
+    date_from: date | None = Query(None, description="only RECs whose period_end is on or after this date"),
+    date_to: date | None = Query(None, description="only RECs whose period_start is on or before this date"),
     band: RiskBand | None = None,
     min_score: int | None = Query(None, ge=0, le=100),
     status: RecStatus | None = None,
@@ -20,7 +24,8 @@ def list_recs(
     db: Session = Depends(get_db),
 ):
     return rec_service.search(
-        db, search=search, band=band, min_score=min_score, status=status, limit=limit, offset=offset
+        db, search=search, band=band, min_score=min_score, status=status,
+        date_from=date_from, date_to=date_to, limit=limit, offset=offset,
     )
 
 

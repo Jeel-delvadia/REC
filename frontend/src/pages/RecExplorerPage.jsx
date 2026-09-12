@@ -21,6 +21,8 @@ export default function RecExplorerPage() {
   const [band, setBand] = useState(searchParams.get('band') || '');
   const [status, setStatus] = useState(searchParams.get('status') || '');
   const [minScore, setMinScore] = useState(searchParams.get('min_score') || '');
+  const [dateFrom, setDateFrom] = useState(searchParams.get('date_from') || '');
+  const [dateTo, setDateTo] = useState(searchParams.get('date_to') || '');
   const [page, setPage] = useState(1);
   const limit = 15;
 
@@ -31,16 +33,13 @@ export default function RecExplorerPage() {
   const loadRecs = async () => {
     try {
       setLoading(true);
-      const s = searchParams.get('search') || '';
-      const b = searchParams.get('band') || '';
-      const st = searchParams.get('status') || '';
-      const ms = searchParams.get('min_score') || '';
-
       const data = await fetchRecs({
-        search: s,
-        band: b,
-        status: st,
-        min_score: ms,
+        search: searchParams.get('search') || '',
+        band: searchParams.get('band') || '',
+        status: searchParams.get('status') || '',
+        min_score: searchParams.get('min_score') || '',
+        date_from: searchParams.get('date_from') || '',
+        date_to: searchParams.get('date_to') || '',
         limit,
         offset: (page - 1) * limit,
       });
@@ -61,6 +60,8 @@ export default function RecExplorerPage() {
     if (band) params.band = band;
     if (status) params.status = status;
     if (minScore) params.min_score = minScore;
+    if (dateFrom) params.date_from = dateFrom;
+    if (dateTo) params.date_to = dateTo;
     setSearchParams(params);
     setPage(1);
   };
@@ -70,6 +71,8 @@ export default function RecExplorerPage() {
     setBand('');
     setStatus('');
     setMinScore('');
+    setDateFrom('');
+    setDateTo('');
     setSearchParams({});
     setPage(1);
   };
@@ -113,8 +116,8 @@ export default function RecExplorerPage() {
       </div>
 
       {/* Filter Controls Bar */}
-      <form onSubmit={handleApplyFilters} className="glass-panel p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 items-end">
-        <div>
+      <form onSubmit={handleApplyFilters} className="glass-panel p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3 items-end">
+        <div className="xl:col-span-2">
           <label className="block text-[11px] text-slate-400 font-medium mb-1">Search Keywords</label>
           <div className="relative">
             <input
@@ -151,10 +154,10 @@ export default function RecExplorerPage() {
             className="w-full bg-slate-900 border border-slate-800 focus:border-sky-500 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none capitalize"
           >
             <option value="">All Statuses</option>
-            <option value="unverified">Unverified</option>
-            <option value="verified">Verified</option>
-            <option value="flagged">Flagged</option>
-            <option value="cleared">Cleared</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+            <option value="reported">Reported</option>
           </select>
         </div>
 
@@ -171,7 +174,27 @@ export default function RecExplorerPage() {
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div>
+          <label className="block text-[11px] text-slate-400 font-medium mb-1">Period From</label>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="w-full bg-slate-900 border border-slate-800 focus:border-sky-500 rounded-lg px-2 py-1.5 text-xs text-slate-200 outline-none"
+          />
+        </div>
+
+        <div>
+          <label className="block text-[11px] text-slate-400 font-medium mb-1">Period To</label>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="w-full bg-slate-900 border border-slate-800 focus:border-sky-500 rounded-lg px-2 py-1.5 text-xs text-slate-200 outline-none"
+          />
+        </div>
+
+        <div className="flex items-center gap-2 sm:col-span-2 md:col-span-1 xl:col-span-7">
           <button
             type="submit"
             className="flex-1 py-1.5 px-3 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs transition-colors"
