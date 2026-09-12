@@ -77,6 +77,37 @@ def test_deleted_ledger_entry_is_detected():
     assert ledger.verify_chain(entries)["broken_at"] == 3
 
 
+def test_rec_integrity_passes_when_row_matches_its_history():
+    entries = [
+        {"event_type": "ISSUED", "payload": {"energy_mwh": 180.0, "holder": "Owner X"}},
+        {"event_type": "TRANSFERRED", "payload": {"from": "Owner X", "to": "Owner Y"}},
+    ]
+    result = ledger.check_rec_integrity({"energy_mwh": 180.0, "holder": "Owner Y"}, entries)
+    assert result["consistent"]
+
+
+def test_rec_integrity_catches_a_row_edited_outside_the_ledger():
+    # RS-07 / report §15 step 5: someone edits energy_mwh directly in the database.
+    entries = [{"event_type": "ISSUED", "payload": {"energy_mwh": 72.0, "holder": "Owner X"}}]
+    result = ledger.check_rec_integrity({"energy_mwh": 180.0, "holder": "Owner X"}, entries)
+    assert not result["consistent"]
+    assert "72.0" in result["reason"] and "180.0" in result["reason"]
+
+
+def test_rec_integrity_catches_a_holder_changed_outside_the_ledger():
+    entries = [
+        {"event_type": "ISSUED", "payload": {"energy_mwh": 72.0, "holder": "Owner X"}},
+        {"event_type": "TRANSFERRED", "payload": {"from": "Owner X", "to": "Owner Y"}},
+    ]
+    result = ledger.check_rec_integrity({"energy_mwh": 72.0, "holder": "Someone Else"}, entries)
+    assert not result["consistent"]
+    assert "Owner Y" in result["reason"]
+
+
+def test_rec_integrity_with_no_issued_entry_is_not_a_finding():
+    assert ledger.check_rec_integrity({"energy_mwh": 1.0, "holder": "X"}, [])["consistent"]
+
+
 def test_circular_resale_is_detected():
     t0 = datetime(2026, 5, 1, 9)
     result = graph.analyse_chain([

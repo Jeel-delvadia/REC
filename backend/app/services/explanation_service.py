@@ -1,6 +1,14 @@
 """Turns check results into a short plain-English explanation for the auditor."""
 from app.integrations import llm_client
 
+# Report §6 classification names, for band values that otherwise read as raw API strings.
+BAND_LABELS = {
+    "genuine": "Genuine / Low Risk",
+    "suspicious": "Suspicious",
+    "high_risk": "High Risk",
+    "likely_fraud": "Likely Fraud",
+}
+
 SYSTEM_PROMPT = (
     "You explain automated verification results for Renewable Energy Certificates (RECs) to a human auditor. "
     "Write 3 to 5 plain sentences with no headings or bullet points. Start with the overall risk verdict, then "
@@ -13,7 +21,7 @@ def build_prompt(rec: dict, score: int, band: str, checks: list[dict]) -> str:
     lines = [
         f"REC {rec['id']} from {rec['plant_name']} ({rec['capacity_kw']:,.0f} kW solar), "
         f"generation period {rec['period_start']} to {rec['period_end']}, claiming {rec['energy_mwh']} MWh.",
-        f"Overall risk score: {score}/100 ({band}).",
+        f"Overall risk score: {score}/100 ({BAND_LABELS.get(band, band)}).",
         "",
         "Check results:",
     ]
@@ -26,12 +34,17 @@ def build_prompt(rec: dict, score: int, band: str, checks: list[dict]) -> str:
 
 
 def template_explanation(score: int, band: str, checks: list[dict]) -> str:
-    opening = f"This REC scores {score}/100, which is {band} risk."
+    opening = f"This REC scores {score}/100 ({BAND_LABELS.get(band, band)})."
+    ledger_check = next((c for c in checks if c["name"] == "ledger" and c["status"] == "fail"), None)
+    if ledger_check:
+        # A gate override (weight 0) outranks every weighted check regardless of risk*weight.
+        opening += f" {ledger_check['summary']}"
     flagged = sorted(
-        (c for c in checks if c["status"] != "pass"), key=lambda c: c["risk"] * c["weight"], reverse=True
+        (c for c in checks if c["status"] != "pass" and c["name"] != "ledger"),
+        key=lambda c: c["risk"] * c["weight"], reverse=True,
     )
     if not flagged:
-        return f"{opening} All {len(checks)} checks passed."
+        return f"{opening} All other checks passed."
     return " ".join([opening] + [f"{c['label']} ({c['status']}): {c['summary']}" for c in flagged])
 
 

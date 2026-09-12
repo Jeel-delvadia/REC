@@ -1,13 +1,18 @@
-"""Loads plant, meter, REC and transfer CSVs (data/simulated/) into the database."""
+"""Loads plant, meter, REC and transfer CSVs (data/simulated/) into the database.
+
+Every row is validated (RS-10) before it's turned into an ORM object. A bad row is skipped
+and reported, not fatal - one malformed line in generation.csv shouldn't sink the whole batch.
+"""
 import csv
-from datetime import date, datetime
 from pathlib import Path
 
+from pydantic import ValidationError
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models import Alert, AuditAction, Generation, LedgerEntry, Plant, Rec, Transaction, VerificationResult
+from app.schemas.ingest_rows import GenerationRow, PlantRow, RecRow, TransactionRow
 from app.services import NotFoundError, audit_service, verification_service
 
 FILES = ("plants.csv", "generation.csv", "recs.csv", "transactions.csv")
@@ -20,8 +25,17 @@ def _read(directory: Path, name: str) -> list[dict]:
         return list(csv.DictReader(f))
 
 
-def _optional_float(value: str) -> float | None:
-    return float(value) if value else None
+def _validate_rows(file_name: str, raw_rows: list[dict], row_model: type, errors: list[str]) -> list:
+    """Parse each row with its Pydantic model; keep the valid ones, record the rest."""
+    valid = []
+    for i, raw in enumerate(raw_rows, start=2):  # row 1 is the header
+        # Pydantic treats "" as a value, not "missing" - CSV leaves optional fields empty.
+        cleaned = {k: (v if v != "" else None) for k, v in raw.items()}
+        try:
+            valid.append(row_model.model_validate(cleaned))
+        except ValidationError as exc:
+            errors.append(f"{file_name}:{i}: {exc.errors()[0]['msg']}")
+    return valid
 
 
 def load_csv_data(db: Session, *, reset: bool = True, verify: bool = True, directory: Path | None = None) -> dict:
@@ -36,49 +50,41 @@ def load_csv_data(db: Session, *, reset: bool = True, verify: bool = True, direc
         for model in RESET_ORDER:
             db.execute(delete(model))
 
+    errors: list[str] = []
+    plant_rows = _validate_rows("plants.csv", _read(directory, "plants.csv"), PlantRow, errors)
+    generation_rows = _validate_rows("generation.csv", _read(directory, "generation.csv"), GenerationRow, errors)
+    rec_rows = _validate_rows("recs.csv", _read(directory, "recs.csv"), RecRow, errors)
+    transaction_rows = _validate_rows("transactions.csv", _read(directory, "transactions.csv"), TransactionRow, errors)
+
+    # Referential checks against the batch being loaded - a row can be well-formed on its own
+    # and still point at a plant or REC that doesn't exist anywhere in this ingest.
+    known_plants = {row.id for row in plant_rows}
+    known_recs = {row.id for row in rec_rows}
+    generation_rows = _drop_unknown_refs("generation.csv", generation_rows, "plant_id", known_plants, errors)
+    rec_rows = _drop_unknown_refs("recs.csv", rec_rows, "plant_id", known_plants, errors)
+    transaction_rows = _drop_unknown_refs("transactions.csv", transaction_rows, "rec_id", known_recs, errors)
+
     plants = [
         Plant(
-            id=row["id"],
-            name=row["name"],
-            owner=row["owner"],
-            latitude=float(row["latitude"]),
-            longitude=float(row["longitude"]),
-            capacity_kw=float(row["capacity_kw"]),
-            technology=row["technology"],
-            commissioned_on=date.fromisoformat(row["commissioned_on"]) if row["commissioned_on"] else None,
+            id=row.id, name=row.name, owner=row.owner, latitude=row.latitude, longitude=row.longitude,
+            capacity_kw=row.capacity_kw, technology=row.technology, commissioned_on=row.commissioned_on,
         )
-        for row in _read(directory, "plants.csv")
+        for row in plant_rows
     ]
     generation = [
-        Generation(
-            plant_id=row["plant_id"],
-            day=date.fromisoformat(row["day"]),
-            energy_kwh=float(row["energy_kwh"]),
-            irradiation_kwh_m2=_optional_float(row["irradiation_kwh_m2"]),
-        )
-        for row in _read(directory, "generation.csv")
+        Generation(plant_id=row.plant_id, day=row.day, energy_kwh=row.energy_kwh, irradiation_kwh_m2=row.irradiation_kwh_m2)
+        for row in generation_rows
     ]
     recs = [
         Rec(
-            id=row["id"],
-            plant_id=row["plant_id"],
-            period_start=date.fromisoformat(row["period_start"]),
-            period_end=date.fromisoformat(row["period_end"]),
-            energy_mwh=float(row["energy_mwh"]),
-            issued_at=datetime.fromisoformat(row["issued_at"]),
-            holder=row["holder"],
+            id=row.id, plant_id=row.plant_id, period_start=row.period_start, period_end=row.period_end,
+            energy_mwh=row.energy_mwh, issued_at=row.issued_at, holder=row.holder,
         )
-        for row in _read(directory, "recs.csv")
+        for row in rec_rows
     ]
     transactions = [
-        Transaction(
-            rec_id=row["rec_id"],
-            from_party=row["from_party"],
-            to_party=row["to_party"],
-            timestamp=datetime.fromisoformat(row["timestamp"]),
-            kind=row["kind"],
-        )
-        for row in _read(directory, "transactions.csv")
+        Transaction(rec_id=row.rec_id, from_party=row.from_party, to_party=row.to_party, timestamp=row.timestamp, kind=row.kind)
+        for row in transaction_rows
     ]
     db.add_all(plants + generation + recs + transactions)
     db.flush()
@@ -96,10 +102,10 @@ def load_csv_data(db: Session, *, reset: bool = True, verify: bool = True, direc
                 "holder": t.to_party,
                 "at": t.timestamp.isoformat(),
             }
-            events.append((t.timestamp, "issued", t.rec_id, payload))
+            events.append((t.timestamp, "ISSUED", t.rec_id, payload))
         else:
             payload = {"from": t.from_party, "to": t.to_party, "at": t.timestamp.isoformat()}
-            events.append((t.timestamp, "transferred", t.rec_id, payload))
+            events.append((t.timestamp, "TRANSFERRED", t.rec_id, payload))
     for _, event_type, rec_id, payload in sorted(events, key=lambda e: e[0]):
         audit_service.append_ledger(db, event_type, rec_id, payload)
     db.commit()
@@ -117,4 +123,16 @@ def load_csv_data(db: Session, *, reset: bool = True, verify: bool = True, direc
         "recs": len(recs),
         "transactions": len(transactions),
         "verified": verified,
+        "errors": errors,
     }
+
+
+def _drop_unknown_refs(file_name: str, rows: list, field: str, known: set[str], errors: list[str]) -> list:
+    kept = []
+    for row in rows:
+        value = getattr(row, field)
+        if value in known:
+            kept.append(row)
+        else:
+            errors.append(f"{file_name}: {field} '{value}' not found in this batch - row skipped")
+    return kept

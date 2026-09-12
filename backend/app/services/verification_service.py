@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import utcnow
-from app.engines import anomaly, duplicate, graph, physics
+from app.engines import anomaly, duplicate, graph, ledger, physics
 from app.integrations import open_meteo
 from app.models import Generation, Plant, Rec, Transaction, VerificationResult
 from app.services import alert_service, audit_service, explanation_service, risk_service
@@ -67,10 +67,20 @@ def verify_rec(db: Session, rec_id: str, *, use_llm: bool = True) -> Verificatio
             "risk": round(risks[name], 2),
             "weight": risk_service.WEIGHTS[name],
             "summary": _SUMMARIES[name](m),
+            "reason_code": risk_service.check_reason(name, m),
             "details": m,
         }
         for name, m in measurements.items()
     ]
+
+    # Ledger integrity is a gate, not a weighted check (report §6): a broken hash chain, or a
+    # REC row that no longer matches its own ledger history, overrides the band to likely_fraud
+    # whatever the weighted score says.
+    ledger_check = _check_ledger(db, rec)
+    checks.append(ledger_check)
+    if ledger_check["status"] == "fail":
+        band = risk_service.FRAUD_BAND
+
     rec_info = {
         "id": rec.id,
         "plant_name": plant.name,
@@ -94,14 +104,49 @@ def verify_rec(db: Session, rec_id: str, *, use_llm: bool = True) -> Verificatio
     rec.risk_score, rec.risk_band, rec.verified_at = score, band, result.created_at
     audit_service.append_ledger(
         db,
-        "verified",
+        "VERIFIED",
         rec.id,
         {"risk_score": score, "risk_band": band, "checks": {c["name"]: c["status"] for c in checks}},
     )
     alert_service.raise_for_verification(db, rec, score, band, checks)
+    if ledger_check["status"] == "fail":
+        alert_service.raise_for_ledger_failure(db, rec, ledger_check["details"]["reason"])
+    provenance = measurements["provenance"]
+    if provenance["cycle"]:
+        alert_service.raise_for_circular_transfer(db, rec, provenance["cycle_parties"])
     db.commit()
     db.refresh(result)
     return result
+
+
+def _check_ledger(db: Session, rec: Rec) -> dict:
+    """RS-07: chain-wide hash integrity, plus this REC's row against its own ledger history."""
+    chain = audit_service.verify_ledger(db)
+    rec_entries = [
+        {"event_type": e.event_type, "payload": e.payload} for e in audit_service.history(db, rec.id)
+    ]
+    row = ledger.check_rec_integrity({"energy_mwh": rec.energy_mwh, "holder": rec.holder}, rec_entries)
+
+    if not chain["valid"]:
+        summary = f"Chain-wide hash mismatch at ledger entry #{chain['broken_at']}."
+        status = "fail"
+    elif not row["consistent"]:
+        summary = f"This REC's row no longer matches its own ledger history: {row['reason']}."
+        status = "fail"
+    else:
+        summary = f"{chain['entries_checked']} ledger entries verified; this REC's row matches its history."
+        status = "pass"
+
+    return {
+        "name": "ledger",
+        "label": "Ledger integrity",
+        "status": status,
+        "risk": 1.0 if status == "fail" else 0.0,
+        "weight": 0,  # a gate, not part of the weighted score - see risk_service module docstring
+        "summary": summary,
+        "reason_code": "LEDGER_TAMPERED" if status == "fail" else "LEDGER_INTACT",
+        "details": {"chain_valid": chain["valid"], "row_consistent": row["consistent"], "reason": row["reason"] or (None if chain["valid"] else f"broken at entry #{chain['broken_at']}")},
+    }
 
 
 def _measure(
