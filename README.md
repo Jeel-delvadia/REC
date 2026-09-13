@@ -196,7 +196,7 @@ Everything is under `/api/v1` (interactive docs at `/docs`):
 |---|---|
 | Dashboard | `GET /dashboard/summary` |
 | Certificates | `GET/POST /recs`, `GET /recs/{id}`, `POST /recs/{id}/verify`, `POST /recs/{id}/buyer`, `POST /recs/{id}/actions`, `GET /recs/{id}/report` (PDF), `GET/POST /recs/plants` |
-| Public verification | `GET /recs/public/verify/{id}` — no auth |
+| Public verification | `GET /public/verify/{id}` — no auth |
 | Ledger | `GET /ledger/verify`, `GET /recs/{id}/history` |
 | Provenance graph | `GET /graph` |
 | Alerts | `GET /alerts` |
