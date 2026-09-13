@@ -60,18 +60,25 @@ def load_csv_data(db: Session, *, reset: bool = True, verify: bool = True, direc
             f"Missing {', '.join(missing)} in {directory}. Generate them with: python -m scripts.seed_data --no-post"
         )
 
+    errors: list[str] = []
+    dq_issues: list[dict | None] = []  # RS-20 (§9.6): batch/aggregate findings, see below
+    plant_rows = _validate_rows("plants.csv", _read(directory, "plants.csv"), PlantRow, errors)
+
+    # RS-21: a plant_operator account's plant_id is just a scoping pointer, not demo data - it
+    # must be cleared before wiping Plant rows (Postgres enforces the FK even mid-transaction,
+    # so "it'll exist again in a second" doesn't help - confirmed live, this was tried and still
+    # violates the constraint on the DELETE itself). Remembered here so it can be restored below
+    # once the fresh batch re-creates that exact plant ID - seed_data.py's IDs (PLT-001..008)
+    # are deterministic, so a plain re-ingest shouldn't force a manual re-link every time, only
+    # when an account's specific plant genuinely isn't in this batch.
+    restorable_plant_links: dict[str, str] = {}
     if reset:
-        # RS-21: a plant_operator account's plant_id is just a scoping pointer, not demo data -
-        # clear it before wiping plants so a real signed-in user's row (and role) survives a
-        # reset instead of tripping the same FK constraint. Left unset until an admin re-links
-        # the account to whichever plant ID the fresh CSVs assign it.
+        rows = db.execute(select(UserProfile.id, UserProfile.plant_id).where(UserProfile.plant_id.isnot(None))).all()
+        restorable_plant_links = {user_id: plant_id for user_id, plant_id in rows}
         db.execute(update(UserProfile).values(plant_id=None))
         for model in RESET_ORDER:
             db.execute(delete(model))
 
-    errors: list[str] = []
-    dq_issues: list[dict | None] = []  # RS-20 (§9.6): batch/aggregate findings, see below
-    plant_rows = _validate_rows("plants.csv", _read(directory, "plants.csv"), PlantRow, errors)
     generation_rows = _validate_rows("generation.csv", _read(directory, "generation.csv"), GenerationRow, errors)
     rec_rows = _validate_rows("recs.csv", _read(directory, "recs.csv"), RecRow, errors)
     transaction_rows = _validate_rows("transactions.csv", _read(directory, "transactions.csv"), TransactionRow, errors)
@@ -169,6 +176,12 @@ def load_csv_data(db: Session, *, reset: bool = True, verify: bool = True, direc
     # confirmed live against a real Supabase project, not just reasoned about.
     db.add_all(plants)
     db.flush()
+    if restorable_plant_links:
+        still_valid = {
+            user_id: plant_id for user_id, plant_id in restorable_plant_links.items() if plant_id in known_plants
+        }
+        for user_id, plant_id in still_valid.items():
+            db.execute(update(UserProfile).where(UserProfile.id == user_id).values(plant_id=plant_id))
     db.add_all(meters)
     db.flush()
     db.add_all(generation + recs)

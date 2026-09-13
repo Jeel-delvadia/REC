@@ -84,3 +84,34 @@ def test_reset_wipes_purchase_requests_tied_to_the_old_recs(db):
     assert session.get(Rec, "REC-OLD") is None
     remaining = session.query(PurchaseRequest).all()
     assert remaining == [], "a purchase request about a REC that no longer exists shouldn't survive the reset"
+
+
+def test_reset_preserves_plant_id_when_the_batch_recreates_the_same_plant(tmp_path):
+    """seed_data.py's plant IDs (PLT-001..008) are deterministic, so a plain re-ingest
+    shouldn't force every registry_admin to manually re-link every plant_operator account
+    every single time - only when that account's specific plant genuinely isn't in the new
+    batch (covered by the test above, using a different plant ID)."""
+    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+
+    @event.listens_for(engine, "connect")
+    def _enable_fk(dbapi_conn, _):
+        dbapi_conn.execute("PRAGMA foreign_keys=ON")
+
+    Base.metadata.create_all(bind=engine)
+    session = sessionmaker(bind=engine)()
+    session.add(Plant(id="PLT-001", name="Old Solar Park", owner="Old Co", latitude=1.0, longitude=1.0, capacity_kw=500, technology="solar"))
+    session.add(UserProfile(id="user-1", email="operator@example.com", role="plant_operator", plant_id="PLT-001"))
+    session.commit()
+
+    # The fresh batch recreates PLT-001 itself (same ID, new row after the wipe) - unlike the
+    # PLT-NEW fixture above, this account's plant genuinely still exists post-reset.
+    (tmp_path / "plants.csv").write_text(PLANTS_CSV.replace("PLT-NEW", "PLT-001"), encoding="utf-8")
+    (tmp_path / "generation.csv").write_text(GENERATION_CSV.replace("PLT-NEW", "PLT-001"), encoding="utf-8")
+    (tmp_path / "recs.csv").write_text(RECS_CSV.replace("PLT-NEW", "PLT-001"), encoding="utf-8")
+    (tmp_path / "transactions.csv").write_text(TRANSACTIONS_CSV, encoding="utf-8")
+
+    ingest_service.load_csv_data(session, reset=True, verify=False, directory=tmp_path)
+
+    profile = session.get(UserProfile, "user-1")
+    assert profile.plant_id == "PLT-001", "the plant still exists after reset (same ID) - the scoping pointer must survive untouched"
+    session.close()
