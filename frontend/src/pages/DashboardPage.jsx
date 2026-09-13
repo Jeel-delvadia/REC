@@ -6,6 +6,8 @@ import {
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import { Link } from 'react-router-dom';
 import { fetchDashboardSummary, fetchAlerts, fetchRecs, verifyLedgerIntegrity } from '../api/client';
+import { useAuth } from '../lib/AuthContext';
+import { canViewOversightTools } from '../lib/permissions';
 import RecDetailModal from '../components/rec/RecDetailModal';
 import Card from '../components/ui/Card';
 import KPI from '../components/ui/KPI';
@@ -35,6 +37,11 @@ function monthlyBandTrend(recs) {
 }
 
 export default function DashboardPage() {
+  const { role } = useAuth();
+  // /ledger/verify is registry_admin/regulator/auditor only server-side - a plant_operator or
+  // buyer would just get a 403 on every dashboard load for a status strip they don't even see,
+  // so skip the call entirely rather than fetch-and-catch.
+  const showLedgerStatus = canViewOversightTools(role);
   const [summary, setSummary] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [ledgerValid, setLedgerValid] = useState(true);
@@ -59,7 +66,7 @@ export default function DashboardPage() {
         fetchDashboardSummary(),
         fetchAlerts(true, 10),
         fetchRecs({ limit: 200 }),
-        verifyLedgerIntegrity().catch(() => ({ valid: true })),
+        showLedgerStatus ? verifyLedgerIntegrity().catch(() => ({ valid: true })) : Promise.resolve({ valid: true }),
       ]);
 
       setSummary(sumData);
@@ -134,14 +141,18 @@ export default function DashboardPage() {
 
       {/* System status strip - a trust signal ("can I believe the numbers above?"), not a KPI. */}
       <Card padding="px-5 py-3.5" className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 text-xs">
-        <div className="flex items-center gap-2">
-          <Lock className={`w-3.5 h-3.5 ${ledgerValid ? 'text-[var(--risk-genuine)]' : 'text-[var(--risk-fraud)]'}`} />
-          <span className="text-[var(--text-secondary)]">Ledger integrity</span>
-          <span className={`font-bold ${ledgerValid ? 'text-[var(--risk-genuine)]' : 'text-[var(--risk-fraud)]'}`}>
-            {ledgerValid ? 'Intact' : 'Tamper detected'}
-          </span>
-        </div>
-        <div className="hidden sm:block w-px h-4 bg-[var(--border)]" />
+        {showLedgerStatus && (
+          <>
+            <div className="flex items-center gap-2">
+              <Lock className={`w-3.5 h-3.5 ${ledgerValid ? 'text-[var(--risk-genuine)]' : 'text-[var(--risk-fraud)]'}`} />
+              <span className="text-[var(--text-secondary)]">Ledger integrity</span>
+              <span className={`font-bold ${ledgerValid ? 'text-[var(--risk-genuine)]' : 'text-[var(--risk-fraud)]'}`}>
+                {ledgerValid ? 'Intact' : 'Tamper detected'}
+              </span>
+            </div>
+            <div className="hidden sm:block w-px h-4 bg-[var(--border)]" />
+          </>
+        )}
         <div className="flex items-center gap-2">
           <AlertTriangle className="w-3.5 h-3.5 text-[var(--risk-suspicious)]" />
           <span className="text-[var(--text-secondary)]">Open alerts</span>
